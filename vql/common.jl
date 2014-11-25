@@ -22,6 +22,9 @@ function *(oa::Array{Operator,1},s::State)
 	end
 	return ns
 end
+import Base.copy
+copy(s::State)=deepcopy(s)
+copy(o::Operator)=deepcopy(o)
 type Num<:Operator
 	num::Number
 end
@@ -48,4 +51,19 @@ function assert(a,b)
 		print_with_color(:red,"Assertion failed, expected $b, got $a\n")
 	end
 end 
-	
+function assert(a::Complex,b::Complex)
+	if ke(real(a),real(b)) && ke(imag(a),imag(b))
+		return true
+	else
+		print_with_color(:red,"Assertion failed, expected $b, got $a\n")
+	end
+end
+function assert(a::Complex,b::Number)
+	assert(a,complex(b))
+end
+function assert(s::String,a,b)
+	print("Asserting: ",s,' ')
+	if assert(a,b)==true
+		print_with_color(:green,"Success.\n")
+	end
+end
