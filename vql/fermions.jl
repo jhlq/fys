@@ -1,6 +1,6 @@
 module F
 
-export g0,g1,g2,g3,gmu,uv,uvv,t,getE
+export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der
 
 include("common.jl")
 
@@ -22,20 +22,24 @@ function gamma(mu::Integer)
 	end
 end
 g0=gamma(0);g1=gamma(1);g2=gamma(2);g3=gamma(3)
-gmu={g0,g1,g2,g3}
+gmu=Any[g0,g1,g2,g3]
 
 function uv(p,m,ind::Integer) #u1, u2, v2, v1
 	E=sqrt(norm(p)^2+m^2)
 	Em=E+m
 	C=sqrt(Em/2m)
+	si=1
+	if length(p)==4
+		si=2
+	end
 	if ind==1
-		return C*[1,0,p[3]/Em,(p[1]+im*p[2])/Em] #u1
+		return C*[1,0,p[si+2]/Em,(p[si]+im*p[si+1])/Em] #u1
 	elseif ind==2
-		return C*[0,1,(p[1]-im*p[2])/Em,-p[3]/Em] #u2
+		return C*[0,1,(p[si]-im*p[si+1])/Em,-p[si+2]/Em] #u2
 	elseif ind==3
-		return C*[p[3]/Em,(p[1]+im*p[2])/Em,1,0] #v2
+		return C*[p[si+2]/Em,(p[si]+im*p[si+1])/Em,1,0] #v2
 	elseif ind==4
-		return C*[p[3]/Em,(p[1]+im*p[2])/Em,1,0] #v1
+		return C*[p[si+2]/Em,(p[si]+im*p[si+1])/Em,1,0] #v1
 	end
 end
 function uvv(p,m)
@@ -44,8 +48,43 @@ end
 function getE(p,m)
 	return sqrt(norm(p)^2+m^2)
 end
+abstract PsiN<:State
+type Psi1<:PsiN
+	p
+	m
+end
+function wf(psi::Psi1,X)
+	u1=uv(psi.p,psi.m,1)
+	sa=exp(-im*dot(psi.p,X))
+	ra=sa.*u1
+	#=ra={}
+	for i in 1:4
+		push!(ra,sa[i].*u1)
+	end=#
+	return ra
+end
+function der(psi::PsiN,X,d::Integer)
+	-im*psi.p[d]*wf(psi,X)
+end
+function lap(psi::PsiN,X) #Laplacian
+	Any[der(psi,X,1),der(psi,X,2),der(psi,X,3),der(psi,X,4)]
+end
+function DE(psi::PsiN,X)	#Dirac Equation 
+	w=wf(psi,X)
+	wd=der(psi,X)
+	dm={	wd[1] 0 wd[4] wd[2]-im*wd[3];
+		0 wd[1] wd[2]+im*wd[3] -wd[4];
+		-wd[4] -wd[2]+im*wd[3] -wd[1] 0;
+		-wd[2]-im*wd[3] wd[4] 0 -wd[1];	}
+	#ra={}
+	#for i in 1:4
+	#	push!(ra,im.*sum((dm[i,:].*w[i]))-psi.m.*w[1])
+	#end	
+	#return ra#im.*(dm*w)-psi.m.*w
+end
+	
 function t()
-	t1();t2()
+	t1();t2();t3()
 end
 function t1()
 	for i in 1:4
@@ -64,6 +103,23 @@ function t2()
 		assert(real(res),E/m)
 	end
 	print_with_color(:green,"2")
+end
+function t3()
+	p=rand(3)
+	m=rand()
+	psi1=Psi1([getE(p,m),p],m)
+	d=1e-9
+	X=rand(4)
+	Xd=zeros(4)
+	Xd+=X
+	Xd[1]+=d
+	w1=wf(psi1,X)
+	w2=wf(psi1,Xd)
+	wd=der(psi1,X,1)
+	for i in 1:4
+		assert(wd[i],(w2[i]-w1[i])/d)
+	end
+	print_with_color(:green,"3")
 end
 
 end

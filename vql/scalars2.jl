@@ -3,29 +3,74 @@ include("common.jl")
 #import Winston
 import Gaston.plot
 import Cubature.hcubature
-import Base.convert
+import Base.isless,Base.isequal
 
-export StateK,state,wf,plot,braket,Creation,Destruction,N,Momentum,hcubature
-
-type StateK<:State
-	K #[k,n,ap?]
-	numcoef
-	bounds
-end
+export StateK,state,wf,plot,braket, braket_fock,braket_cub,Creation,Destruction,N, Momentum,Particle,hcubature,bs!,Operator,State,NoState
 type Momentum 
 	k
+end
+type Particle
+	k::Momentum
+	n::Integer
+	p::Integer #1 for particle, -1 for anti particle
+end
+type StateK<:State
+	K::Array{Particle} #[k,n,ap?] 
+	numcoef
+	extcoef #external coefficient
+	bounds
 end
 function convert(::Type{Momentum},a::Array)
 	return Momentum(a)
 end
+function convert(::Type{Momentum},a::Number)
+	return Momentum(a)
+end
+convert(::Type{Particle},a::Array)=Particle(a[1],a[2],a[3])
+convert(::Type{StateK},n::Number)=NoState(n)
+function isless(k1::Momentum,k2::Momentum)
+	dim=length(k1.k)
+	if dim==1
+		return k1.k<k2.k
+	else
+		for d in 1:length(k1.k)
+			if k1.k[d]<k2.k[d]
+				return true
+			elseif k1.k[d]>k2.k[d]
+				return false
+			end
+		end
+	end
+	return false
+end
+function isless(p1::Particle,p2::Particle)
+	if p1.p>p2.p
+		return true
+	end
+	return p1.k<p2.k
+end
+==(m1::Momentum,m2::Momentum)=isequal(m1.k,m2.k)
+==(m::Momentum,w::WeakRef)=isequal(m.k,w)
+==(m::Momentum,k)=isequal(m.k,k)
+==(w::WeakRef,m::Momentum)=isequal(w,m.k)
+==(k,m::Momentum)=isequal(k,m.k)
+==(p1::Particle,p2::Particle)=begin;p1.k==p2.k&&p1.n==p2.n&&p1.p==p2.p;end;
+function *(o::Operator,sa::Array{StateK})
+	lsa=length(sa)
+	nsa=Array(State,lsa)
+	for si in 1:lsa
+		nsa[si]=o*sa[si]
+	end
+	return nsa
+end
 function state(range=[-pi,1pi])
-	StateK(Any[],1,range)
+	StateK(Any[],1,1,range)
 end
 function state(a::Array,range=[-pi,1pi])
 	if a[1]==-pi
-		return StateK(Any[],1,range)
+		return StateK(Any[],1,1,range)
 	else
-		return StateK(Any[a],1,range)
+		return StateK(Any[a],1,1,range)
 	end
 end
 function state(dim::Integer)
@@ -33,18 +78,18 @@ function state(dim::Integer)
 	for d in 2:dim
 		range=hcat(range,[-pi,1pi])
 	end
-	StateK(Any[],1,range)
+	StateK(Any[],1,1,range)
 end	
 function wf(s::StateK,x)
 	t=0
-	np=0
+#	np=0
 	for k in s.K
-		np+=k[2]
+#		np+=k[2]
 		t+=k[2]*exp(k[3]*im*dot(k[1].k,x))
 	end
-	if np==0
-		np=1
-	end
+#	if np==0
+#		np=1
+#	end
 	return t*s.numcoef
 end
 function wfm(s::StateK,x)
@@ -78,21 +123,56 @@ function vol(bounds)
 		return t*x*y*z
 	end	
 end		
-	
-function braket(s1::StateK,s2::StateK,res=100)
-	if length(s1.bounds)==2
-		r1=map(x->wf(s1,x),linspace(s1.bounds[1]+(s1.bounds[2]-s1.bounds[1])/res,s1.bounds[2],res))
-		r2=map(x->wf(s2,x),linspace(s2.bounds[1]+(s2.bounds[2]-s2.bounds[1])/res,s2.bounds[2],res))
-		t=r1'*r2./res
-		if length(t)==1
-			return t[1]
+function braket_fock(s1::StateK,s2::StateK)
+	if sort(s1.K)==sort(s2.K)
+		return 1
+	else
+		return 0
+	end
+	#sort(s1.K)==sort(s2.K)?1:0
+end
+function braket(s1::StateK,s2::StateK)
+	s1.extcoef*s2.extcoef*braket_fock(s1,s2)
+end
+function braket(sa1::Array{StateK},sa2::Array{StateK})
+	lsa=length(sa1)
+	nsa=Array(Number,lsa)
+	for i in 1:lsa
+		nsa[i]=braket(sa1[i],sa2[i])
+	end
+	return nsa
+end
+function braket(sa1::Array{State},sa2::Array{State})
+	lsa=length(sa1)
+	nsa=Array(Number,lsa)
+	for i in 1:lsa
+		if typeof(sa1[i])==NoState
+			nsa[i]=sa1[i].x
+		elseif typeof(sa2[i])==NoState
+			nsa[i]=sa2[i].x
 		else
-			return t
-		end  
-	elseif false
+			nsa[i]=braket(sa1[i],sa2[i])
+		end
+	end
+	return nsa
+end
+braket(sa1::Array,sa2::Array)=braket(convert(Array{State},sa1),convert(Array{State},sa2))
+function braket_cub(s1::StateK,s2::StateK)
+	if length(s1.bounds)==2
 		return quadgk(x->conj(wf(s1,x))*wf(s2,x),s1.bounds[1],s1.bounds[2])[1]/vol(s1.bounds)
 	else
 		return (hcubature(x->real(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1]+im*hcubature(x->imag(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1])/vol(s1.bounds)
+	end
+end
+function braket_map(s1::StateK,s2::StateK,res=100)
+	#if length(s1.bounds)==2	
+	r1=map(x->wf(s1,x),linspace(s1.bounds[1]+(s1.bounds[2]-s1.bounds[1])/res,s1.bounds[2],res))
+	r2=map(x->wf(s2,x),linspace(s2.bounds[1]+(s2.bounds[2]-s2.bounds[1])/res,s2.bounds[2],res))
+	t=r1'*r2./res
+	if length(t)==1
+		return t[1]
+	else
+		return t
 	end
 end
 type Creation <: Operator
@@ -103,9 +183,10 @@ end
 function *(c::Creation,s::StateK)
 	ns=deepcopy(s)
 	for nk in 1:length(s.K)
-		if s.K[nk][1]==c.k && s.K[nk][3]==c.anti
-			ns.K[nk][2]+=1
-			return (1/sqrt(ns.K[nk][2]))*ns
+		if s.K[nk].k==c.k && s.K[nk].p==c.anti
+			ns.K[nk].n+=1
+			ns.extcoef*=sqrt(ns.K[nk].n)
+			return ns
 		end
 	end
 	push!(ns.K,[c.k,1,c.anti])
@@ -118,9 +199,13 @@ end
 function *(a::Destruction,s::State)
 	ns=deepcopy(s)
 	for nk in 1:length(s.K)
-		if s.K[nk][1]==a.k && s.K[nk][3]==a.anti
-			ns.K[nk][2]-=1
-			return (1/sqrt(ns.K[nk][2]+1))*ns
+		if s.K[nk].k==a.k && s.K[nk].p==a.anti
+			ns.K[nk].n-=1
+			ns.extcoef*=sqrt(ns.K[nk].n+1)
+			if ns.K[nk].n==0
+				deleteat!(ns.K,nk)
+			end
+			return ns
 		end
 	end
 	return 0
@@ -137,7 +222,7 @@ function /(s::StateK,n::Number)
 	return ns
 end
 type N<:Operator
-	k
+	k::Momentum
 	anti
 end
 function *(Nk::N,s::State)
@@ -150,9 +235,17 @@ function Ntot(s::State)
 	end
 	return n
 end
+function bs!(s::StateK) #bare state
+	s.extcoef=1
+end
+function bs!(sa::Array{StateK})
+	for s in sa
+		bs!(s)
+	end
+end
 
 function t()
-	t1();t2();t3();t4()
+	t1();t2();t3();t4();t5
 end
 function t1()
 	s0=state()
@@ -211,8 +304,33 @@ end
 function t5()
 	s0=state(4)
 	ap1=Creation([1,0,0,0],1)
+	a1=Destruction([1,0,0,0],1)
 	s1=ap1*s0
-	assert(braket(s1,s1),1)
+	bs!(s1)
+	s3=ap1^3*s0
+	bs!(s3)
+	N1=N([1,0,0,0],1)
+	sa=Array(StateK,0)
+	for i in 1:5
+		push!(sa,ap1^i*s0)
+	end
+	ap2=Creation([0,1,0,0],1)
+	for i in 1:5
+		push!(sa,ap2^i*sa[i])
+	end
+	bs!(sa)
+	sb=Array(StateK,0)
+	for i in 1:5
+		push!(sb,ap2^i*s0)
+	end
+	
+	for i in 1:10
+		assert("braket(s$i,s$i)==1",braket(sa[i],sa[i]),1)
+	end
+	for i in 1:5
+		assert("braket(s$i,N1*s$i)==$i",braket(sa[i],N1*sa[i]),i)
+	end
+	assert("braket(sb,N1*sb)==0",braket(sb,N1*sb),0)
 end
 
 end
