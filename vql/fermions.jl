@@ -4,10 +4,20 @@ export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der,lap,guv
 
 include("common.jl")
 
-pm1=[0 1;1 0]
-pm2=[0 -im;im 0]
-pm3=[1 0;0 -1]
-
+σ1=[0 1;1 0]
+pm1=σ1
+σ2=[0 -im;im 0]
+pm2=σ2
+σ3=[1 0;0 -1]
+pm3=σ3
+σi=Array[σ1,σ2,σ3]
+pmi=σi
+zer=[0 0;0 0]
+Σ1=[σ1 zer;zer σ1]
+Σ2=[σ2 zer;zer σ2]
+Σ3=[σ3 zer;zer σ3]
+Σi=Array[Σ1,Σ2,Σ3]
+spinopi=Σi
 function gamma(mu::Integer)
 	if mu==0
 		return [eye(2) 0*eye(2);0*eye(2) -eye(2)]
@@ -104,10 +114,10 @@ function DE()
 	de4=im.*[wd[2][1]+im*wd[3][1], -wd[4][2], 0, -wd[1][4]]
 	des=[sum(de1),sum(de2),sum(de3),sum(de4)]/m
 end
-type ε<:Operator
+type Σ<:Operator
 	axis::Integer
 end
-SpinOp=ε
+SpinOp=Σ
 	
 function t()
 	t1();t2();t3()
