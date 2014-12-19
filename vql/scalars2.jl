@@ -5,12 +5,9 @@ import Gaston.plot
 import Cubature.hcubature
 import Base.isless,Base.isequal
 
-export StateK,state,wf,plot,braket, braket_fock,braket_cub,Creation,Destruction,N, Momentum,Particle,hcubature,bs!,Operator,State,NoState
-type Momentum 
-	k
-end
+export StateK,state,wf,plot,braket, braket_fock,braket_cub,Creation,Destruction,N,  Particle,hcubature,bs!,Operator,State,NoState
 type Particle
-	k::Momentum
+	k
 	n::Integer
 	p::Integer #1 for particle, -1 for anti particle
 end
@@ -20,15 +17,16 @@ type StateK<:State
 	extcoef #external coefficient
 	bounds
 end
+#=
 function convert(::Type{Momentum},a::Array)
 	return Momentum(a)
 end
 function convert(::Type{Momentum},a::Number)
 	return Momentum(a)
-end
+end=#
 convert(::Type{Particle},a::Array)=Particle(a[1],a[2],a[3])
 convert(::Type{StateK},n::Number)=NoState(n)
-function isless(k1::Momentum,k2::Momentum)
+#=function isless(k1::Momentum,k2::Momentum)
 	dim=length(k1.k)
 	if dim==1
 		return k1.k<k2.k
@@ -42,18 +40,18 @@ function isless(k1::Momentum,k2::Momentum)
 		end
 	end
 	return false
-end
+end=#
 function isless(p1::Particle,p2::Particle)
 	if p1.p>p2.p
 		return true
 	end
 	return p1.k<p2.k
 end
-==(m1::Momentum,m2::Momentum)=isequal(m1.k,m2.k)
+#= ==(m1::Momentum,m2::Momentum)=isequal(m1.k,m2.k)
 ==(m::Momentum,w::WeakRef)=isequal(m.k,w)
 ==(m::Momentum,k)=isequal(m.k,k)
 ==(w::WeakRef,m::Momentum)=isequal(w,m.k)
-==(k,m::Momentum)=isequal(k,m.k)
+==(k,m::Momentum)=isequal(k,m.k)=#
 ==(p1::Particle,p2::Particle)=begin;p1.k==p2.k&&p1.n==p2.n&&p1.p==p2.p;end;
 function *(o::Operator,sa::Array{StateK})
 	lsa=length(sa)
@@ -85,7 +83,7 @@ function wf(s::StateK,x)
 #	np=0
 	for k in s.K
 #		np+=k[2]
-		t+=k[2]*exp(k[3]*im*dot(k[1].k,x))
+		t+=k.n*exp(k.p*im*dot(k.k,x))
 	end
 #	if np==0
 #		np=1
@@ -176,7 +174,7 @@ function braket_map(s1::StateK,s2::StateK,res=100)
 	end
 end
 type Creation <: Operator
-	k::Momentum
+	k
 	#create
 	anti
 end
@@ -189,11 +187,11 @@ function *(c::Creation,s::StateK)
 			return ns
 		end
 	end
-	push!(ns.K,[c.k,1,c.anti])
+	push!(ns.K,Particle(c.k,1,c.anti))
 	return ns
 end
 type Destruction <: Operator
-	k::Momentum
+	k
 	anti
 end
 function *(a::Destruction,s::State)
@@ -222,7 +220,7 @@ function /(s::StateK,n::Number)
 	return ns
 end
 type N<:Operator
-	k::Momentum
+	k
 	anti
 end
 function *(Nk::N,s::State)
@@ -331,6 +329,16 @@ function t5()
 		assert("braket(s$i,N1*s$i)==$i",braket(sa[i],N1*sa[i]),i)
 	end
 	assert("braket(sb,N1*sb)==0",braket(sb,N1*sb),0)
+end
+function t6()
+	s0=state(4)
+	ap1=Creation([1000,0,0,0],1)
+	s1=ap1*s0
+	ap1p=Creation([1000,1,0,0],1)
+	s1p=ap1p*s0
+	assert(braket_cub(s1,s1p),0)
+	s2p=ap1*ap1p*s0
+
 end
 
 end

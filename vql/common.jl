@@ -1,7 +1,19 @@
-import Base.assert,Base.convert
+import Base.assert, Base.convert, Base.isless, Base.isequal, Base.copy
+export State,Operator,Num,Wavticle,assert,ke
 
+#types
 abstract State
 abstract Operator
+type Num<:Operator
+	num::Number
+end
+abstract Field<:Operator
+type NoState<:State
+	x
+end
+abstract Wavticle
+
+#behavior
 function *(o1::Operator,o2::Operator)
 	oa=Array(Operator,0)
 	push!(oa,o1)
@@ -32,25 +44,70 @@ function *(o::Operator,sa::Array{State})
 	end
 	return nsa
 end
-import Base.copy
 copy(s::State)=deepcopy(s)
 copy(o::Operator)=deepcopy(o)
-type Num<:Operator
-	num::Number
-end
+#=
 function *(n::Num,s::State)
 	ns=deepcopy(s)
 	ns.numcoef*=n.num
 	return ns
 end
+=#
 *(n::Number,s::State)=Num(n)*s
 *(n::Number,o::Operator)=Num(n)*o
 *(o::Operator,n::Number)=n==0?0:Num(n)*o
-abstract Field<:Operator
-type NoState<:State
-	x
-end
+
 convert(::Type{State},n::Number)=NoState(n)
+#=type Momentum 
+	k
+end
+function convert(::Type{Momentum},a::Array)
+	return Momentum(a)
+end
+function convert(::Type{Momentum},a::Number)
+	return Momentum(a)
+end
+function isless(k1::Momentum,k2::Momentum)
+	dim=length(k1.k)
+	if dim==1
+		return k1.k<k2.k
+	else
+		for d in 1:length(k1.k)
+			if k1.k[d]<k2.k[d]
+				return true
+			elseif k1.k[d]>k2.k[d]
+				return false
+			end
+		end
+	end
+	return false
+end
+==(m::Momentum,w::WeakRef)=m.k==w
+==(w::WeakRef,m::Momentum)=w==m.k
+==(m1::Momentum,m2::Momentum)=begin;m1.k==m2.k;end
+==(m::Momentum,k)=begin;m.k==k;end
+==(k,m::Momentum)=begin;k==m.k;end
+=#
+#=
+function isless(p1::Wavticle,p2::Wavticle)
+	if p1.p>p2.p
+		return true
+	end
+	return p1.k<p2.k
+end
+=#
+
+function vol(bounds)
+	l=length(bounds)
+	d=l/2
+	v=0
+	if d==1
+		return bounds[2]-bounds[1]
+	elseif d==4
+		(t,x,y,z)=(bounds[2,1]-bounds[1,1],bounds[2,2]-bounds[1,2],bounds[2,3]-bounds[1,3],bounds[2,4]-bounds[1,4])
+		return t*x*y*z
+	end	
+end
 
 function ke(a,b,tol=1e-5)
 	if a<b+tol && a>b-tol
@@ -93,8 +150,8 @@ function assert(a::Array,b::Array)
 	return sum(ba)==s?true:false
 end		
 function assert(s::String,a,b)
-	print("Asserting: ",s,' ')
+	print(s,' ')
 	if assert(a,b)==true
-		print_with_color(:green,"࿐࿑࿒ Success!\n")
+		print_with_color(:green,"ɤ Success!\n")
 	end
 end

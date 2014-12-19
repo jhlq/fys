@@ -1,6 +1,6 @@
 module F
 
-export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der
+export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der,lap,guv
 
 include("common.jl")
 
@@ -25,7 +25,7 @@ g0=gamma(0);g1=gamma(1);g2=gamma(2);g3=gamma(3)
 gmu=Any[g0,g1,g2,g3]
 
 function uv(p,m,ind::Integer) #u1, u2, v2, v1
-	E=sqrt(norm(p)^2+m^2)
+	E=getE(p,m)#sqrt(norm(p)^2+m^2)
 	Em=E+m
 	C=sqrt(Em/2m)
 	si=1
@@ -43,16 +43,21 @@ function uv(p,m,ind::Integer) #u1, u2, v2, v1
 	end
 end
 function uvv(p,m)
-	return {uv(p,m,1),uv(p,m,2),uv(p,m,3),uv(p,m,4)}
+	return Any[uv(p,m,1),uv(p,m,2),uv(p,m,3),uv(p,m,4)]
 end
 function getE(p,m)
-	return sqrt(norm(p)^2+m^2)
+	if length(p)==3
+		return sqrt(norm(p)^2+m^2)
+	elseif length(p)==4
+		return sqrt(norm(p[2:end])^2+m^2)
+	end
 end
 abstract PsiN<:State
 type Psi1<:PsiN
 	p
 	m
 end
+guv=[1 0 0 0;0 -1 0 0;0 0 -1 0;0 0 0 -1]
 function wf(psi::Psi1,X)
 	u1=uv(psi.p,psi.m,1)
 	sa=exp(-im*dot(psi.p,X))
@@ -72,16 +77,37 @@ end
 function DE(psi::PsiN,X)	#Dirac Equation 
 	w=wf(psi,X)
 	wd=der(psi,X)
-	dm={	wd[1] 0 wd[4] wd[2]-im*wd[3];
+	dm=[	wd[1] 0 wd[4] wd[2]-im*wd[3];
 		0 wd[1] wd[2]+im*wd[3] -wd[4];
 		-wd[4] -wd[2]+im*wd[3] -wd[1] 0;
-		-wd[2]-im*wd[3] wd[4] 0 -wd[1];	}
+		-wd[2]-im*wd[3] wd[4] 0 -wd[1];	]
 	#ra={}
 	#for i in 1:4
 	#	push!(ra,im.*sum((dm[i,:].*w[i]))-psi.m.*w[1])
 	#end	
 	#return ra#im.*(dm*w)-psi.m.*w
+	de1=im.*Any[wd[1][1], 0, wd[4][3], wd[2][4]-im*wd[3][4]]
+	de2=im.*Any[0, wd[1][1], wd[2][2]+im*wd[3][3], -wd[4][4]]
 end
+function DE()
+	p3=[0.1,0.2,0.3]
+	m=0.5
+	E=getE(p3,m)
+	p=[E,p3]
+	psi=Psi1(p,m)
+	X=rand(4)
+	w=wf(psi,X)
+	wd=lap(psi,X)
+	de1=im.*[wd[1][1], 0, -wd[4][3], -wd[2][4]+im*wd[3][4]]
+	de2=im.*[0, wd[1][2], -wd[2][3]-im*wd[3][3], wd[4][4]]
+	de3=im.*[wd[4][1], wd[2][2]-im*wd[3][2], -wd[1][3], 0]
+	de4=im.*[wd[2][1]+im*wd[3][1], -wd[4][2], 0, -wd[1][4]]
+	des=[sum(de1),sum(de2),sum(de3),sum(de4)]/m
+end
+type ε<:Operator
+	axis::Integer
+end
+SpinOp=ε
 	
 function t()
 	t1();t2();t3()
@@ -120,6 +146,24 @@ function t3()
 		assert(wd[i],(w2[i]-w1[i])/d)
 	end
 	print_with_color(:green,"3")
+end
+function t4()
+	p=rand(3)
+	m=rand()
+	psi1=Psi1([getE(p,m),p],m)
+	d=1e-9
+	X=rand(4)
+	w1=wf(psi1,X)	
+	wd=lap(psi1,X)
+	for i in 1:4
+		Xd=deepcopy(X)
+		Xd[i]+=d
+		w2=wf(psi1,Xd)
+		for j in 1:4
+			assert(wd[i][j],(w2[j]-w1[j])/d)
+		end
+	end
+	print_with_color(:green,"4")
 end
 
 end
