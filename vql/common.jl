@@ -1,5 +1,5 @@
 import Base.assert, Base.convert, Base.isless, Base.isequal, Base.copy
-export State,Operator,Num,Wavticle,assert,ke
+export State,Operator,Num,Wavticle,assert,ke, NoState, vol
 
 #Symbols: Α α alpha Β β beta Γ γ gamma Δ δ delta Ε ε epsilon Ζ ζ zeta Η η eta Θ θ theta Ι ι iota Κ κ kappa Λ λ lambda Μ μ mu Ν ν nu Ξ ξ xi Ο ο omicron Π π pi Ρ ρ rho Σ σ/ς sigma Τ τ tau Υ υ upsilon Φ φ phi Χ χ chi Ψ ψ psi Ω ω omega
 
@@ -14,6 +14,9 @@ type NoState<:State
 	x
 end
 abstract Wavticle
+type SummedStates
+	states::Array{State}
+end
 
 #behavior
 function *(o1::Operator,o2::Operator)
@@ -55,9 +58,56 @@ function *(n::Num,s::State)
 	return ns
 end
 =#
+function ==(s1::State,s2::State)
+	for n in names(s1)
+		if getfield(s1,n)!=getfield(s2,n)
+			return false
+		end
+	end
+	return true
+end
 *(n::Number,s::State)=Num(n)*s
 *(n::Number,o::Operator)=Num(n)*o
 *(o::Operator,n::Number)=n==0?0:Num(n)*o
++(s1::State,s2::State)=SummedStates([s1,s2])
+function +(ns::NoState,s::State)
+	if ns.x==0
+		return s
+	else
+		return SummedStates([ns,s])
+	end
+end
++(ns1::NoState,ns2::NoState)=+(ns1.x,ns2.x)
+function +(s::State,ns::NoState)
+	if ns.x==0
+		return s
+	else
+		return SummedStates([s,ns])
+	end
+end
++(n::Number,s::State)=NoState(n)+s
++(s::State,n::Number)=s+NoState(n)
+function /(s1::State,s2::State)
+	if s1==s2
+		return 1
+	else
+		return NaN
+	end
+end
+function /(n::Number,s::State)
+	if n==0
+		return 0
+	else
+		return NaN
+	end
+end
+function /(ns::NoState,s::State)
+	if ns.x==0
+		return 0
+	else
+		return NaN
+	end
+end
 
 convert(::Type{State},n::Number)=NoState(n)
 #=type Momentum 
@@ -98,6 +148,14 @@ function isless(p1::Wavticle,p2::Wavticle)
 	return p1.k<p2.k
 end
 =#
+function ==(w1::Wavticle,w2::Wavticle)
+	for n in names(w1)
+		if getfield(w1,n)!=getfield(w2,n)
+			return false
+		end
+	end
+	return true
+end
 
 function vol(bounds)
 	l=length(bounds)

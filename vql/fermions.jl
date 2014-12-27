@@ -1,6 +1,6 @@
 module F
 
-export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der,lap,guv
+export g0,g1,g2,g3,gmu,uv,uvv,t,getE,Psi1,wf,der,lap, guv, Electron, electron, ElectronState, state, ERL, acom, σ1,σ2,σ3,σi,Σ1,Σ2,Σ3,Σi
 
 include("common.jl")
 
@@ -13,9 +13,9 @@ pm3=σ3
 σi=Array[σ1,σ2,σ3]
 pmi=σi
 zer=[0 0;0 0]
-Σ1=[σ1 zer;zer σ1]
-Σ2=[σ2 zer;zer σ2]
-Σ3=[σ3 zer;zer σ3]
+Σ1=0.5*[σ1 zer;zer σ1]
+Σ2=0.5*[σ2 zer;zer σ2]
+Σ3=0.5*[σ3 zer;zer σ3]
 Σi=Array[Σ1,Σ2,Σ3]
 spinopi=Σi
 function gamma(mu::Integer)
@@ -71,12 +71,7 @@ guv=[1 0 0 0;0 -1 0 0;0 0 -1 0;0 0 0 -1]
 function wf(psi::Psi1,X)
 	u1=uv(psi.p,psi.m,1)
 	sa=exp(-im*dot(psi.p,X))
-	ra=sa.*u1
-	#=ra={}
-	for i in 1:4
-		push!(ra,sa[i].*u1)
-	end=#
-	return ra
+	return sa.*u1
 end
 function der(psi::PsiN,X,d::Integer)
 	-im*psi.p[d]*wf(psi,X)
@@ -118,7 +113,87 @@ type Σ<:Operator
 	axis::Integer
 end
 SpinOp=Σ
+type Electron<:Wavticle
+	p
+	spin
+	antiness
+	existance
+end
+function electron(p3=[0,0,0],spin=1,antiness=1,existance=1)
+	Electron([getE(p3,0.51099891),p3],spin,antiness,existance)
+end
+==(e1::Electron,e2::Electron)=e1.p==e2.p&&e1.spin==e2.spin&&e1.antiness==e2.antiness
+function isless(e1::Electron,e2::Electron)
+	if e1.antiness<e2.antiness
+		return false
+	end
+	for px in 1:length(e1.p)
+		if e1.p[px]<e2.p[px]
+			return true
+		end
+	end
+	for sx in 1:length(e1.spin)
+		if e1.spin[sx]<e2.spin[sx]
+			return true
+		end
+	end
+	return e1.existance<e2.existance
+end
+type ERL<:Operator #Electron Raising Lowering
+	electron::Electron
+	raise::Bool
+end
+function ctranspose(a::ERL)
+	ap=deepcopy(a)
+	ap.raise=!a.raise
+	return ap
+end
+type ElectronState<:State
+	P::Array{Electron}
+	num
+	bounds
+end
+function state(dim::Integer=4,range=[-1e9pi,1e9pi]) #decimal numbers to 1e-9 will fit with whole waves
+	rc=deepcopy(range)
+	for d in 2:dim
+		range=hcat(range,rc)
+	end
+	ElectronState([],1,range)
+end
+function *(a::ERL,s::ElectronState)
+	if a.raise==true
+		for nk in 1:length(s.P)
+			if s.P[nk]==a.electron
+				return 0
+			end
+		end
+		ns=deepcopy(s)
+		push!(ns.P,a.electron)
+		return ns
+	else
+		for nk in 1:length(s.P)
+			if s.P[nk]==a.electron
+				ns=deepcopy(s)
+				deleteat!(ns.P,nk)
+				return ns
+			end
+		end
+		return 0
+	end
+end
+function acom(a,b)
+	s=state()
+	return (a*b*s+b*a*s)/s
+end
+type ψ<:Field
+	p
+	cr
+	dr
+	adjoint::Bool
+end
+Psi=ψ
 	
+
 function t()
 	t1();t2();t3()
 end
@@ -175,5 +250,21 @@ function t4()
 	end
 	print_with_color(:green,"4")
 end
+function t5() #SpinOp
+	m=0.51099891 #MeV
+	p3=[0,0,0]
+	E=getE(p3,m)
+	psi1=Psi1([E,p3],m)
+	X=[0,0,0,0]
+	w=wf(psi1,X)
+	assert(Σ3*w,0.5*w)
+end
+function t6() #ERL
+	e1=electron()
+	a1=ERL(e1,false)
+	assert(acom(a1,a1'),1)
+	assert(acom(a1,a1),0)
+	assert(acom(a1',a1'),0)
+end	
 
 end
