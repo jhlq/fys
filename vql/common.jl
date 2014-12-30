@@ -1,5 +1,8 @@
 import Base.assert, Base.convert, Base.isless, Base.isequal, Base.copy
-export State,Operator,Num,Wavticle,assert,ke, NoState, vol
+export State,Operator,Num,Wavticle,assert,ke, NoState, vol, precision
+
+global precision = [Float64, 1e-1] #or BigFloat
+#1e-1 means wavticle momentums can only be specified with [0:0.1:1], increased precision increases integration times notably.
 
 #Symbols: Α α alpha Β β beta Γ γ gamma Δ δ delta Ε ε epsilon Ζ ζ zeta Η η eta Θ θ theta Ι ι iota Κ κ kappa Λ λ lambda Μ μ mu Ν ν nu Ξ ξ xi Ο ο omicron Π π pi Ρ ρ rho Σ σ/ς sigma Τ τ tau Υ υ upsilon Φ φ phi Χ χ chi Ψ ψ psi Ω ω omega
 
@@ -14,7 +17,9 @@ type NoState<:State
 	x
 end
 abstract Wavticle
-type SummedStates
+abstract Sum
+abstract Product
+type SummedStates<:Sum
 	states::Array{State}
 end
 
@@ -169,7 +174,27 @@ function vol(bounds)
 	end	
 end
 
-function ke(a,b,tol=1e-5)
+function ke(a,b,tol=precision[2]) #kinda equals
+	if a<b+tol && a>b-tol
+		return true
+	else
+		return false
+	end
+end
+function stripzeros(a::FloatingPoint)
+	if a==0.0
+		return a,0
+	end
+	stripped=0
+	while floor(abs(a))==0.0
+		a*=10
+		stripped+=1
+	end
+	return (a,stripped)
+end
+function ke(a::FloatingPoint,b,tol=precision[2])
+	(a,stripped)=stripzeros(a)
+	b*=10^stripped
 	if a<b+tol && a>b-tol
 		return true
 	else

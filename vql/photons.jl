@@ -1,9 +1,9 @@
 module P
 include("common.jl")
-import Base.ctranspose,Base.isless, Base.display, Cubature.hcubature, Cubature.pcubature
-export polmat,guv,cmu,PRL,wf,Photon,PhotonState,state,photon,braket,braket_fock, bs!, Aμ, Amu, integrate, hcubature, precision
+import Base.ctranspose,Base.isless, Base.display, Cubature.hcubature, Cubature.pcubature, Base.sum
+export polmat,guv,cmu,PRL,wf,Photon,PhotonState, PhotonField, state,photon,braket,braket_fock, bs!, Aμ, Amu, πμ, pimu, der, lap, integrate, hcubature, pcubature, multarr, getexp#, precision
 
-global precision = [Float64, 1e-3] #or BigFloat
+#global precision = [Float64, 1e-1] #or BigFloat
 
 #d_ada, d_a=[d0,-d1,-d2,-d3], da=[d0,d1,d2,d3]
 #d_ada*StateP=0
@@ -146,12 +146,15 @@ end
 type PhotonField<:Field
 	photon::Photon
 	functions
+	coefs
+	exponents
 	operators
 end
 function Aμ(p::Photon)
 	om=norm(p.k[2:end])
 	epm=polmat(p.k)	
 	V=vol(p.bounds)
+	coefs=(complex(p.existance/sqrt(2V*om)*epm*p.polarity),complex(p.existance/sqrt(2V*om)*epm*p.polarity))
 	function Aμplus(X)
 		tot=[0,0,0,0]
 		for r in 1:4
@@ -166,22 +169,116 @@ function Aμ(p::Photon)
 		end
 		return tot
 	end
-	PhotonField(p,(Aμplus,Aμminus),(PRL(p,false),PRL(p,false)'))
+	exponents=(Any[-im,dot,p.k,:X],Any[im,dot,p.k,:X])
+	PhotonField(p,(Aμplus,Aμminus),coefs,exponents,(PRL(p,false),PRL(p,true)))
 end
 Amu=Aμ
-function der(fi::PhotonField)
-
+function wf(pf::PhotonField,X)
+	(pf.functions[1](X),pf.functions[2](X))
+end
+function wf(pf::PhotonField,X,f::Integer)
+	expon=deepcopy(pf.exponents[f])
+	Xloc=findin(expon,[:X])
+	#expon[Xloc]=X
+	d=dot(expon[Xloc-1][1],X)
+	d*=multarr(expon[1:Xloc[1]-3])
+	return pf.coefs[f]*exp(d)
+end
+function multarr(arr::Array)
+	tot=1
+	for a in arr
+		tot*=a
+	end
+	return tot
+end
+function der(pf::PhotonField,dim::Integer=1)
+	pfd=deepcopy(pf)
+	dotloc1=findin(pf.exponents[1],[dot])
+	dotloc2=findin(pf.exponents[2],[dot])
+	m1=pfd.coefs[1]*multarr(pfd.exponents[1][1:dotloc1[1]-1])*pf.photon.k[dim]
+	m2=pfd.coefs[2]multarr(pfd.exponents[2][1:dotloc2[1]-1])*pf.photon.k[dim]
+	for d in 1:length(m1)
+		pfd.coefs[1][d]=m1[d]
+		pfd.coefs[2][d]=m2[d]
+	end
+	return pfd
+end
+function der(pf::PhotonField,X::Array,dim::Integer=1,d=precision[2]/10)
+	(f1,f2)=wf(pf,X)
+	X[dim]+=d
+	(fp1,fp2)=wf(pf,X)
+	return ((fp1-f1)/d,(fp2-f2)/d)	
+end
+function lap(pf::PhotonField,X,d=precision[2]/10)
+	dd=[der(pf,X,1,d),der(pf,X,2,d),der(pf,X,3,d),der(pf,X,4,d)]
+	return (Array[dd[1][1],dd[2][1],dd[3][1],dd[4][1]],Array[dd[1][2],dd[2][2],dd[3][2],dd[4][2]])
+end
+function sum(a1::Array{Array},a2::Array{Array})
+	dim1=length(a1)
+	dim2=length(a1[1])
+	typ=typeof(a1[1][1])
+	s=Array(typ,dim1)
+	for d2 in 1:dim2
+		for d1 in 1:dim1
+			s[d2]+=a1[d1][d2]+a2[d1][d2]
+		end
+	end
+	return s
 end
 #πμ=-der(fi::Aμ)
-#pimu=πμ
+function πμ(p::Photon)
+	om=norm(p.k[2:end])
+	epm=polmat(p.k)	
+	V=vol(p.bounds)
+	coefs=(im*p.k[1]*p.existance/sqrt(2V*om)*epm*p.polarity,-im*p.k[1]*p.existance/sqrt(2V*om)*epm*p.polarity)
+	function πμplus(X)
+		tot=[0,0,0,0]
+		for r in 1:4
+			tot+=im*p.k[1]*p.existance/sqrt(2V*om)*epm[:,r]*p.polarity[r]*exp(-im*dot(p.k,X))
+		end
+		return tot
+	end
+	function πμminus(X)
+		tot=[0,0,0,0]	
+		for r in 1:4
+			tot+=-im*p.k[1]*p.existance/sqrt(2V*om)*epm[:,r]*p.polarity[r]*exp(im*dot(p.k,X))
+		end
+		return tot
+	end
+	exponents=(Any[-im,dot,p.k,:X],Any[im,dot,p.k,:X])
+	PhotonField(p,(πμplus,πμminus),coefs,exponents,(PRL(p,false),PRL(p,true)))
+end
+pimu=πμ
 type FieldProduct<:Field
 	x
 end
-type PhotonFields #operator?
+type PhotonFields<:Product
+	photons::Array{Photon}
+	functions::Array{(Function,Function)}
+	exponents
+	operators::Array{(Operator,Operator)}
+end
+function *(pf1::PhotonField,pf2::PhotonField)
 
 end
+type PhotonFieldsSum<:Sum
+
+end
+function getexp(pf::PhotonField,X)
+	Xloc1=findin(pf.exponents[1],[:X])
+	Xloc2=findin(pf.exponents[2],[:X])
+	d1=dot(pf.exponents[1][Xloc1-1][1],X)
+	d1*=multarr(pf.exponents[1][1:Xloc1[1]-3])
+	d2=dot(pf.exponents[2][Xloc2-1][1],X)
+	d2*=multarr(pf.exponents[2][1:Xloc2[1]-3])
+	return (d1,d2)
+end
 function integrate(pf::PhotonField,abstol=precision[2])
-	(hcubature(x->real(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1]+im*hcubature(x->imag(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1])/vol(s1.bounds)
+	(e1,e2)=getexp(pf,rand(4))
+	if e1!=1 && e2!=1
+		return (0+0im,0+0im)
+	end
+	#(hcubature(x->real(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1]+im*hcubature(x->imag(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1])/vol(s1.bounds)
 	function intfun(X,v,f::Integer=1)
 		tv=pf.functions[f](X)
 		for d in 1:length(tv)
@@ -190,14 +287,14 @@ function integrate(pf::PhotonField,abstol=precision[2])
 		end
 		return v
 	end
-	dim=length(pf.photon.bounds[:,1])
-	rv1=zeros(dim)
-	rv2=zeros(dim)
-	tv1=pcubature(2dim,intfun,pf.photon.bounds[1,:],pf.photon.bounds[2,:],abstol=abstol)
-	tv2=pcubature(2dim,intfun,pf.photon.bounds[1,:],pf.photon.bounds[2,:],abstol=abstol)	
+	dim=length(pf.photon.bounds[1,:])
+	rv1=zeros(Complex,dim)
+	rv2=zeros(Complex,dim)
+	tv1=hcubature(2dim,intfun,pf.photon.bounds[1,:]+precision[2]/10,pf.photon.bounds[2,:],abstol=abstol)
+	tv2=hcubature(2dim,intfun,pf.photon.bounds[1,:]+precision[2]/10,pf.photon.bounds[2,:],abstol=abstol)	
 	for d in 1:dim
-		rv1[d]=complex(tv1[2d-1],tv1[2d])
-		rv2[d]=complex(tv2[2d-1],tv2[2d])
+		rv1[d]=complex(tv1[1][2d-1],tv1[1][2d])
+		rv2[d]=complex(tv2[1][2d-1],tv2[1][2d])
 	end
 	return (rv1,rv2)
 end
@@ -270,9 +367,36 @@ function t3()
 	plot([real(ar) imag(ar)])
 end
 function t4()
-	assert(integrate(fi),0)
-	assert(integrate(fipHam),H)
-	com(amu,pimu)
+	p=photon()
+	pf=Amu(p)
+	pfc=pimu(p)
+	X=rand(4)
+	pfd=der(pf,X)
+	pfi=integrate(pf)
+	assert("Integration",pfi[1],0)
+	assert(pfi[2],0)
+	assert("Conjugation",wf(pfc,X)[1],-pfd[1])
+	assert(wf(pfc,X)[2],-pfd[2])
+#	assert(integrate(fipHam),H)
+#	com(amu,pimu)
+end
+function t5()
+	p=photon()
+	pf=Amu(p)
+	X=rand(4)
+	(pflap1,pflap2)=lap(pf,X)
+	(pf_lap1,pf_lap2)=lap(pf,guv*X)
+	hamdens1=-0.5sum(pflap1,pf_lap1)
+end
+function t6()
+	p=photon()
+	pf=Amu(p)
+	X=rand(4)
+	pm1=pimu(p)
+	pm2=der(pf)
+
+	assert(wf(pf,X)[1],wf(pf,X,1))
+	assert(wf(pm1,X)[1],-wf(pm2,X,1))
 end
 
 end
