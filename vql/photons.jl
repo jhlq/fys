@@ -1,7 +1,7 @@
 module P
 include("common.jl")
 import Base.ctranspose,Base.isless, Base.display, Cubature.hcubature, Cubature.pcubature, Base.sum
-export polmat,guv,cmu,PRL,wf,Photon,PhotonState, PhotonField, state,photon,braket,braket_fock, bs!, Aμ, Amu, πμ, pimu, der, lap, integrate, hcubature, pcubature, multarr, getexp#, precision
+export polmat,guv,cmu,PRL,wf,Photon,PhotonState, PhotonField, state,photon,braket,braket_fock, bs!, Aμ, Amu, πμ, pimu, der, lap, integrate, hcubature, pcubature, multarr, getexp, PhotonFields#, precision
 
 #global precision = [Float64, 1e-1] #or BigFloat
 
@@ -145,16 +145,19 @@ function state(dim::Integer=4,range=[-1e9pi,1e9pi]) #decimal numbers to 1e-9 wil
 end
 type PhotonField<:Field
 	photon::Photon
-	functions
+	functions #deprecated
 	coefs
 	exponents
 	operators
+	f
+	PhotonField(ph,fs,co,ex,op)=(pf=new(ph,fs,co,ex,op); pf.f=X->wf(pf,X); pf)
 end
-function Aμ(p::Photon)
+-(pf::PhotonField)=(npf=deepcopy(pf); npf.coefs*=-1; npf)
+function Aμ(p::Photon) 
 	om=norm(p.k[2:end])
 	epm=polmat(p.k)	
 	V=vol(p.bounds)
-	coefs=(complex(p.existance/sqrt(2V*om)*epm*p.polarity),complex(p.existance/sqrt(2V*om)*epm*p.polarity))
+	coefs=Array[complex(p.existance/sqrt(2V*om)*epm*p.polarity),complex(p.existance/sqrt(2V*om)*epm*p.polarity)]
 	function Aμplus(X)
 		tot=[0,0,0,0]
 		for r in 1:4
@@ -172,6 +175,7 @@ function Aμ(p::Photon)
 	exponents=(Any[-im,dot,p.k,:X],Any[im,dot,p.k,:X])
 	PhotonField(p,(Aμplus,Aμminus),coefs,exponents,(PRL(p,false),PRL(p,true)))
 end
+Aμ()=Aμ(photon())
 Amu=Aμ
 function wf(pf::PhotonField,X)
 	(pf.functions[1](X),pf.functions[2](X))
@@ -225,7 +229,7 @@ function sum(a1::Array{Array},a2::Array{Array})
 	end
 	return s
 end
-#πμ=-der(fi::Aμ)
+#πμ=-der(Aμ)
 function πμ(p::Photon)
 	om=norm(p.k[2:end])
 	epm=polmat(p.k)	
@@ -248,18 +252,39 @@ function πμ(p::Photon)
 	exponents=(Any[-im,dot,p.k,:X],Any[im,dot,p.k,:X])
 	PhotonField(p,(πμplus,πμminus),coefs,exponents,(PRL(p,false),PRL(p,true)))
 end
+πμ()=πμ(photon())
 pimu=πμ
 type FieldProduct<:Field
 	x
 end
 type PhotonFields<:Product
 	photons::Array{Photon}
-	functions::Array{(Function,Function)}
-	exponents
-	operators::Array{(Operator,Operator)}
+	functions#::Array{(Function,Function)} #deprecated
+	coefs::Tuple#Array#{Array}
+	exponents::((Array...,)...,)#(Array{Array{Array}}
+	operators::((Operator...,)...,)#Array{(Operator,Operator)}
 end
 function *(pf1::PhotonField,pf2::PhotonField)
+	photons=[pf1.photon,pf2.photon]
+	coef1=pf1.coefs[1].*pf2.coefs[1]
+	coef2=pf1.coefs[1].*pf2.coefs[2]
+	coef3=pf1.coefs[2].*pf2.coefs[1]
+	coef4=pf1.coefs[2].*pf2.coefs[2]
+	coefs=(coef1,coef2,coef3,coef4)
 
+	exp1=(pf1.exponents[1],pf2.exponents[1])
+	exp2=(pf1.exponents[1],pf2.exponents[2])
+	exp3=(pf1.exponents[2],pf2.exponents[1])
+	exp4=(pf1.exponents[2],pf2.exponents[2])
+	exps=(exp1,exp2,exp3,exp4)
+	
+	ops1=(pf1.operators[1],pf2.operators[1])
+	ops2=(pf1.operators[1],pf2.operators[2])
+	ops3=(pf1.operators[2],pf2.operators[1])
+	ops4=(pf1.operators[2],pf2.operators[2])
+	opses=(ops1,ops2,ops3,ops4)
+
+	return PhotonFields(photons,0,coefs,exps,opses)
 end
 type PhotonFieldsSum<:Sum
 
@@ -276,7 +301,7 @@ end
 function integrate(pf::PhotonField,abstol=precision[2])
 	(e1,e2)=getexp(pf,rand(4))
 	if e1!=1 && e2!=1
-		return (0+0im,0+0im)
+		return (0,0)
 	end
 	#(hcubature(x->real(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1]+im*hcubature(x->imag(conj(wf(s1,x))*wf(s2,x)),s1.bounds[1,:],s1.bounds[2,:],abstol=1e-9)[1])/vol(s1.bounds)
 	function intfun(X,v,f::Integer=1)
@@ -297,6 +322,29 @@ function integrate(pf::PhotonField,abstol=precision[2])
 		rv2[d]=complex(tv2[1][2d-1],tv2[1][2d])
 	end
 	return (rv1,rv2)
+end
+function getexp(pfs::PhotonFields,X)
+	expses=length(pfs.exponents)
+	Xlocs=Array(Any,expses)
+	for i in 1:expses
+		Xlocs[i]=(findin(pfs.exponents[i][1],[:X])[1],findin(pfs.exponents[i][1],[:X])[1])
+	end
+	ds=zeros(expses)
+	for i in 1:expses
+		ds[i]=dot(pfs.exponents[1][Xloc[i]-1][1],X)
+		ds[i]*=multarr(pfs.exponents[1][1:Xloc[i][1]-3])
+	end
+		d1*=multarr(pfs.exponents[1][1:Xloc1[1]-3])
+	d2=dot(pfs.exponents[2][Xloc2-1][1],X)
+	d2*=multarr(pfs.exponents[2][1:Xloc2[1]-3])
+	return ds
+end
+function integrate(pf::PhotonField,abstol=precision[2])
+	(e1,e2)=getexp(pf,rand(4))
+	if e1!=1 && e2!=1
+		return (0,0)
+	end
+
 end
 function braket_fock(s1::PhotonState,s2::PhotonState)
 	sort(s1.K)==sort(s2.K)?1:0
@@ -397,6 +445,12 @@ function t6()
 
 	assert(wf(pf,X)[1],wf(pf,X,1))
 	assert(wf(pm1,X)[1],-wf(pm2,X,1))
+end
+function t7()
+	pf1=Amu()
+	pf2=pimu()
+	pfs=pf1*pf2
+	getexp(pfs,rand(4))
 end
 
 end
