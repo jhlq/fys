@@ -1,0 +1,22 @@
+get 2 elements
+check all 2 element simplifications
+get 3 elements
+check all 3 element simplifications
+save all configurations and return them sorted by increasing length
+
+∧ wedge product operator
+
+1. metric tensor g_muynuy
+2. Basis e
+3. vierbein fields.
+
+abstract Operation
+type Det <: Operation
+	patients
+end
+
+cross product in 7D
+
+representions(ex)
+
+assign(ex::Expression,s::Symbol,n::Number)
