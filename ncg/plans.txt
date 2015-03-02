@@ -20,3 +20,5 @@ cross product in 7D
 representions(ex)
 
 assign(ex::Expression,s::Symbol,n::Number)
+
+Term :+ Term
