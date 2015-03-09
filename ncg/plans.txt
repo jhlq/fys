@@ -22,3 +22,5 @@ representions(ex)
 assign(ex::Expression,s::Symbol,n::Number)
 
 Term :+ Term
+
+Make rules invertible.
