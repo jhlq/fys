@@ -18,12 +18,17 @@ function ==(cs1::Components, cs2::Components)
 	return true
 end
 
-type Expression 
+type Expression #<: Component?
 	components::Array{Any}
 end
+X=Union(Number,Symbol,Component)
+Ex=Union(Symbol,Component,Expression)
+
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
 +(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
 +(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,a);ex;end
+-(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
+-(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,-1);insert!(ex.components,1,a);ex;end
 *(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,ex2);ex;end
 *(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
 *(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
@@ -44,14 +49,19 @@ function *(a::Number,ex::Expression)
 end
 
 *(a::Number,c::Component)=Expression([a,c])
+*(c1::Union(Component,Symbol),c2::Union(Component,Symbol))=Expression([c1,c2])
 -(c1::Component,c2::Component)=+(c1,-1*c2)
 -(c::Component,a)=+(c,-1*a)
 -(a,c::Component)=+(-1*a,c)
 +(c1::Component,c2::Component)=Expression([c1,:+,c2])
 +(c::Component,ex::Expression)=Expression([c,:+,ex])
 +(ex::Expression,c::Component)=Expression([ex,:+,c])
-+(c::Component,a)=Expression([c,:+,a])
-+(a,c::Component)=Expression([a,:+,c])
+#+(c::Component,a)=Expression([c,:+,a])
+#+(a,c::Component)=Expression([a,:+,c])
+
++(x1::X,x2::X)=Expression([x1,:+,x2])
+-(x1::X,x2::X)=Expression([x1,:+,-1,x2])
+*(x1::X,x2::X)=Expression([x1,x2])
 
 abstract Operation <: Component
 
@@ -74,7 +84,18 @@ function indsin(array,item)
 	end
 	return ind
 end
-
+function addparse(ex::Expression)
+	adds=findin(ex.components,[:+])
+	nadd=length(adds)+1
+	parsed=Array(Any,0)
+	s=1
+	for add in adds
+		push!(parsed,ex.components[s:add-1])
+		s=add+1
+	end
+	push!(parsed,ex.components[s:end])
+	return parsed
+end
 function componify(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
@@ -96,20 +117,23 @@ end
 function simplify(ex::Expression)
 	ex=deepcopy(ex)
 	ex=componify(ex)
-	lex=length(ex.components)
+#	lex=length(ex.components)
 	cs=Array(Components,0)
-	adds=findin(ex.components,[:+])
-	insert!(adds,1,0)
-	push!(adds,lex+1)
+#	adds=findin(ex.components,[:+])
+#	insert!(adds,1,0)
+#	push!(adds,lex+1)
+	adds=addparse(ex)
 	nadds=length(adds)
-	for add in 1:nadds-1
-		tcs=Array(Component,0)
+	for add in 1:nadds
+		tcs=Array(Ex,0)
 		coef=1
-		for term in adds[add]+1:adds[add+1]-1
-			if typeof(ex.components[term])<:Component
-				push!(tcs,ex.components[term])
-			elseif typeof(ex.components[term])<:Number
-				coef*=ex.components[term]
+		for term in adds[add]
+			if typeof(term)<:Ex
+				push!(tcs,term)
+			elseif typeof(term)<:Number
+				coef*=term
+			else			
+				warn("Don't know how to handle $term")
 			end
 		end
 		com=Components(tcs,coef)
