@@ -21,13 +21,13 @@ sin(x::Ex)=Sin(x)
 #division?
 
 patterns=Dict()
-patterns["Cos"]=ex->sin(ex.x+pi/2)
-patterns["Sin"]=ex->cos(ex.x-pi/2)
+patterns["Cos"]=ex->sin(simplify(ex.x+pi/2))
+patterns["Sin"]=ex->cos(simplify(ex.x-pi/2))
 macro maketype(key,x)
 	println(key)
 	return parse("$key($x)")
 end
-function matches(ex::Component)
+function matches_dep(ex::Component)
 	m=Any[ex]
 	key=string(typeof(ex))
 	if haskey(patterns,key)
@@ -41,3 +41,31 @@ function matches(ex::Component)
 	end
 	return m
 end
+function matches(ex::Component,included=false)
+	m=Any[]
+	if included
+		push!(m,ex)
+	end
+	key=string(typeof(ex))
+	if haskey(patterns,key)
+		tex1=patterns[key](ex)
+		
+		push!(m,tex1)
+	end
+	if typeof(ex.x)<:Component && haskey(patterns,string(typeof(ex.x)))
+	#	key=string(typeof(ex.x))
+		tm=matches(ex.x,false)
+	#	tex=deepcopy(ex)
+	#	tex.x=patterns[key](ex.x)
+		for tex in tm
+			tx=deepcopy(ex)
+			tx.x=tex
+			push!(m,tx)
+		end
+	end
+	return m
+end
+
+expat1=Dict()
+expat2=Dict()
+expats=Dict[expat1,expat2]

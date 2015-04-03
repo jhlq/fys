@@ -25,13 +25,13 @@ X=Union(Number,Symbol,Component)
 Ex=Union(Symbol,Component,Expression)
 
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
-+(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
-+(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,a);ex;end
--(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
--(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,-1);insert!(ex.components,1,a);ex;end
++(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
++(a::X,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,a);ex;end
+#-(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
+#-(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,-1);insert!(ex.components,1,a);ex;end
 *(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,ex2);ex;end
-*(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
-*(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
+#*(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
+#*(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
 /(ex::Expression,n::Number)=*(1/n,ex)
 function *(a::Number,ex::Expression)
 	ex=deepcopy(ex)
@@ -51,8 +51,8 @@ end
 *(a::Number,c::Component)=Expression([a,c])
 *(c1::Union(Component,Symbol),c2::Union(Component,Symbol))=Expression([c1,c2])
 -(c1::Component,c2::Component)=+(c1,-1*c2)
--(c::Component,a)=+(c,-1*a)
--(a,c::Component)=+(-1*a,c)
+#-(c::Component,a)=+(c,-1*a)
+#-(a,c::Component)=+(-1*a,c)
 +(c1::Component,c2::Component)=Expression([c1,:+,c2])
 +(c::Component,ex::Expression)=Expression([c,:+,ex])
 +(ex::Expression,c::Component)=Expression([ex,:+,c])
@@ -147,18 +147,27 @@ function simplify(ex::Expression)
 	exa=Any[]
 	for c in cs
 		if c.coef!=0
-			if length(c.components)==1
-				if c.coef!=1
-					push!(exa,c.coef)
-				end
-				push!(exa,c.components[1])
+			if isempty(c.components)
+				push!(exa,c.coef)
 				push!(exa,:+)
 			else
-				push!(exa,c)
-				push!(exa,:+)
+				if length(c.components)==1
+					if c.coef!=1
+						push!(exa,c.coef)
+					end
+					push!(exa,c.components[1])
+					push!(exa,:+)
+				else
+					push!(exa,c)
+					push!(exa,:+)
+				end
 			end
-		end
+		end	
 	end
 	deleteat!(exa,length(exa))
-	return Expression(exa)
+	if length(exa)==1
+		return exa[1]
+	else
+		return Expression(exa)
+	end
 end
