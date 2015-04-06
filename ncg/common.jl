@@ -1,3 +1,5 @@
+import Base.push!
+
 abstract Component
 type Components <: Component
 	components
@@ -21,11 +23,30 @@ end
 type Expression #<: Component?
 	components::Array{Any}
 end
+function expression(a::Array{Array})
+	if isempty(a)
+		return Expression([0])
+	end
+	ex=Expression(Any[])
+	for cc in a
+		for c in cc
+			push!(ex.components,c)
+		end
+		push!(ex.components,:+)
+	end
+	deleteat!(ex.components,length(ex.components))
+	return ex
+end
+==(ex1::Expression,ex2::Expression)=ex1.components==ex2.components
+==(ex::Expression,zero::Integer)=length(ex.components)==1&&ex.components[1]==zero
+push!(ex::Expression,a)=push!(ex.components,a)
+
 X=Union(Number,Symbol,Component)
 Ex=Union(Symbol,Component,Expression)
 
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
 +(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
+-(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
 +(a::X,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,a);ex;end
 #-(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
 #-(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,-1);insert!(ex.components,1,a);ex;end
@@ -87,7 +108,7 @@ end
 function addparse(ex::Expression)
 	adds=findin(ex.components,[:+])
 	nadd=length(adds)+1
-	parsed=Array(Any,0)
+	parsed=Array(Array,0)
 	s=1
 	for add in adds
 		push!(parsed,ex.components[s:add-1])
@@ -96,6 +117,7 @@ function addparse(ex::Expression)
 	push!(parsed,ex.components[s:end])
 	return parsed
 end
+addparse(x::X)=x
 function componify(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
@@ -170,4 +192,39 @@ function simplify(ex::Expression)
 	else
 		return Expression(exa)
 	end
+end
+function sumnum(ex::Expression)
+	terms=addparse(ex)
+	nterms=Array[]
+	numsum=0
+	for term in terms
+		prod=1
+		allnum=true
+		nterm=Any[]
+		for t in term
+			if typeof(t)<:Number
+				prod*=t
+			else
+				if allnum
+					allnum=false
+				end
+				push!(nterm,t)				
+			end
+		end
+		if prod==0
+			continue
+		elseif allnum
+			numsum+=prod
+			continue
+		else
+			if prod!=1
+				unshift!(nterm,prod)
+			end
+			push!(nterms,nterm)
+		end
+	end
+	if numsum!=0
+		push!(nterms,[numsum])
+	end
+	return expression(nterms)
 end

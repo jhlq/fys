@@ -1,3 +1,5 @@
+#module T
+
 include("common.jl")
 import Base.cos, Base.sin
 
@@ -5,11 +7,13 @@ type Operator <: Component
 	op
 	arg
 end
-type Cos <: Component
+abstract SingleArg <: Component
+==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
+type Cos <: SingleArg
 	x
 end
 cos(x::Ex)=Cos(x)
-type Sin <: Component
+type Sin <: SingleArg
 	x
 end
 sin(x::Ex)=Sin(x)
@@ -69,3 +73,45 @@ end
 expat1=Dict()
 expat2=Dict()
 expats=Dict[expat1,expat2]
+
+type Pattern
+	lhs::Expression
+	rhs::Expression
+end
+expats=Pattern[]
+p1=Pattern(cos(:x)-sin(:x+pi/2),Expression([0]))
+#push!{T}(a::Array{T,1},n::Nothing)=a
+function matches(p::Pattern)
+	if p.lhs==0
+		return false
+	end
+	m=Pattern[]
+	terms=addparse(p.lhs)
+	for term in 1:length(terms)
+		tp=deepcopy(p)
+		tt=deepcopy(terms)
+		push!(tp.rhs,:+)
+		push!(tp.rhs,terms[term])
+		deleteat!(tt,term)
+		tp.lhs=expression(tt)
+		push!(m,tp)
+		tm=matches(tp)
+		if tm!=false
+			for ttp in matches(tp)
+				push!(m,ttp)
+			end
+		end
+	end
+	return m
+end
+function ==(p1::Pattern,p2::Pattern)
+	m=matches(p2)
+	for p in m
+		if p1.rhs==p.rhs&&p1.lhs==p.lhs
+			return true
+		end
+	end
+	return false
+end
+
+#end
