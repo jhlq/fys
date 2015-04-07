@@ -9,6 +9,9 @@ type Operator <: Component
 end
 abstract SingleArg <: Component
 ==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
+type Inverted <: SingleArg
+	x
+end
 type Cos <: SingleArg
 	x
 end
@@ -75,11 +78,11 @@ expat2=Dict()
 expats=Dict[expat1,expat2]
 
 type Pattern
-	lhs::Expression
-	rhs::Expression
+	lhs::EX
+	rhs::EX
 end
 expats=Pattern[]
-p1=Pattern(cos(:x)-sin(:x+pi/2),Expression([0]))
+p1=Pattern(cos(:x)-sin(:x+pi/2),0)
 #push!{T}(a::Array{T,1},n::Nothing)=a
 function matches(p::Pattern)
 	if p.lhs==0
@@ -90,10 +93,21 @@ function matches(p::Pattern)
 	for term in 1:length(terms)
 		tp=deepcopy(p)
 		tt=deepcopy(terms)
-		push!(tp.rhs,:+)
-		push!(tp.rhs,terms[term])
+		if typeof(tp.rhs)==Expression
+			push!(tp.rhs,:+)
+			push!(tp.rhs,-1)
+			push!(tp.rhs,terms[term])
+		else
+			tp.rhs=Expression([tp.rhs,:+,-1,terms[term]])
+		end
+#		tp.rhs=simplify(tp.rhs)
 		deleteat!(tt,term)
-		tp.lhs=expression(tt)
+#		if length(tt)==1&&typeof(tt[1])==Array&&length(tt[1])==1
+#			tp.lhs=tt[1][1]
+#		else
+			tp.lhs=expression(tt)
+#		end
+#		tp.lhs=simplify(tp.lhs)
 		push!(m,tp)
 		tm=matches(tp)
 		if tm!=false
@@ -101,6 +115,10 @@ function matches(p::Pattern)
 				push!(m,ttp)
 			end
 		end
+	end
+	for tp in m
+		tp.rhs=sumnum(componify(tp.rhs))
+		tp.lhs=sumnum(componify(tp.lhs))
 	end
 	return m
 end

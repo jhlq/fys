@@ -43,7 +43,9 @@ push!(ex::Expression,a)=push!(ex.components,a)
 
 X=Union(Number,Symbol,Component)
 Ex=Union(Symbol,Component,Expression)
+EX=Union(Number,Symbol,Component,Expression)
 
+push!(x::X,a)=Expression([x,a])
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
 +(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
 -(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
@@ -136,6 +138,7 @@ function componify(ex::Expression,raw=false)
 		return Expression(stuff)
 	end		
 end
+componify(x::X)=x
 function simplify(ex::Expression)
 	ex=deepcopy(ex)
 	ex=componify(ex)
@@ -193,7 +196,11 @@ function simplify(ex::Expression)
 		return Expression(exa)
 	end
 end
+simplify(x::X)=x
 function sumnum(ex::Expression)
+	if ex==0
+		return 0
+	end
 	terms=addparse(ex)
 	nterms=Array[]
 	numsum=0
@@ -228,3 +235,4 @@ function sumnum(ex::Expression)
 	end
 	return expression(nterms)
 end
+sumnum(x::X)=x #no no needs to recurse into components such as Cos.x, move SingleArg to common and add check

@@ -24,3 +24,7 @@ assign(ex::Expression,s::Symbol,n::Number)
 Term :+ Term
 
 Make rules invertible.
+
+Evaluation function, evaluate(ex,[:x=>3,:y=>8]), division symbol :/
+
+Rename Pattern Equation? Equations operating on equations, sounds good, sounds like consciousness. Recursion into expressions.
