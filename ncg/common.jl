@@ -55,7 +55,7 @@ push!(x::X,a)=Expression([x,a])
 *(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,ex2);ex;end
 #*(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
 #*(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
-/(ex::Expression,n::Number)=*(1/n,ex)
+/(ex::Ex,n::Number)=*(1/n,ex)
 function *(a::Number,ex::Expression)
 	ex=deepcopy(ex)
 	insert!(ex.components,1,a)
@@ -73,6 +73,13 @@ end
 
 *(a::Number,c::Component)=Expression([a,c])
 *(c1::Union(Component,Symbol),c2::Union(Component,Symbol))=Expression([c1,c2])
+function *(ex::Expression,x::EX)
+	ap=addparse(ex)
+	for t in ap
+		push!(t,x)
+	end
+	return expression(ap)
+end
 -(c1::Component,c2::Component)=+(c1,-1*c2)
 #-(c::Component,a)=+(c,-1*a)
 #-(a,c::Component)=+(-1*a,c)
@@ -102,6 +109,15 @@ function indsin(array,item)
 	ind=Int64[]
 	for it in 1:length(array)
 		if array[it]==item
+			push!(ind,it)
+		end
+	end
+	return ind
+end
+function indsin(array,typ::Type)
+	ind=Int64[]
+	for it in 1:length(array)
+		if isa(array[it],typ)
 			push!(ind,it)
 		end
 	end
@@ -139,7 +155,10 @@ function componify(ex::Expression,raw=false)
 	end		
 end
 componify(x::X)=x
-function simplify(ex::Expression)
+function simplify_dep2(ex::Expression)
+	componify(sumnum(ex))
+end
+function simplify_dep(ex::Expression)
 	ex=deepcopy(ex)
 	ex=componify(ex)
 #	lex=length(ex.components)
@@ -189,7 +208,9 @@ function simplify(ex::Expression)
 			end
 		end	
 	end
-	deleteat!(exa,length(exa))
+	if length(exa)>0
+		deleteat!(exa,length(exa))
+	end
 	if length(exa)==1
 		return exa[1]
 	else

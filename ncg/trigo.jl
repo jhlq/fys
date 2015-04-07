@@ -1,7 +1,7 @@
 #module T
 
 include("common.jl")
-import Base.cos, Base.sin
+import Base.cos, Base.sin, Base./
 
 type Operator <: Component
 	op
@@ -9,8 +9,20 @@ type Operator <: Component
 end
 abstract SingleArg <: Component
 ==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
-type Inverted <: SingleArg
+type ÷ <: SingleArg #\div
 	x
+end
+Div=÷
+/(x::X,ex::Ex)=Expression([x,Div(ex)])
+function /(ex::Expression,x::Ex)
+#	nex=deepcopy(ex)
+#	push!(nex,Div(x))
+#	return nex
+	ap=addparse(ex)
+	for t in ap
+		push!(t,Div(x))
+	end
+	return expression(ap)
 end
 type Cos <: SingleArg
 	x
@@ -130,6 +142,34 @@ function ==(p1::Pattern,p2::Pattern)
 		end
 	end
 	return false
+end
+function divify(term::Array)
+	dis=indsin(term,Div)
+	remove=Int64[]
+	for i in dis
+		m=indin(term,term[i].x)		
+		if m>0
+			push!(remove,i,m)
+		end
+	end
+	if !isempty(remove)
+		ret=deepcopy(term)
+		deleteat!(ret,sort!(remove))
+		if isempty(ret)
+			push!(ret,1)
+		end
+		return ret
+	else
+		return term
+	end	
+end
+function simplify(ex::Expression)
+	ex=componify(sumnum(ex))
+	ap=addparse(ex)
+	for term in 1:length(ap)
+		ap[term]=divify(ap[term])
+	end
+	return expression(ap)
 end
 
 #end
