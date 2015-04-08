@@ -26,35 +26,49 @@ function simplify(eqa::Array{Equation})
 end
 relations=Equation[]
 eq1=Equation(cos(:x)-sin(:x+pi/2),0)
-function matches(p::Equation)
-	if p.lhs==0
+function matches(eq::Equation)
+	if eq.lhs==0
 		return false #it only moves from left to right
 	end
 	m=Equation[]
-	terms=addparse(p.lhs)
+	dm=matches(eq,Div)
+	for d in dm
+		if !(d∈m)
+			push!(m,d)
+		end
+	end
+	terms=addparse(eq.lhs)
 	for term in 1:length(terms)
-		tp=deepcopy(p)
+		teq=deepcopy(eq)
 		tt=deepcopy(terms)
-		if typeof(tp.rhs)==Expression
-			push!(tp.rhs,:+)
-			push!(tp.rhs,-1)
-			push!(tp.rhs,terms[term])
+		if typeof(teq.rhs)==Expression
+			push!(teq.rhs,:+)
+			push!(teq.rhs,-1)
+			push!(teq.rhs,terms[term])
 		else
-			tp.rhs=Expression([tp.rhs,:+,-1,terms[term]])
+			teq.rhs=Expression([teq.rhs,:+,-1,terms[term]])
 		end
 		deleteat!(tt,term)
-		tp.lhs=expression(tt)
-		push!(m,tp)
-		tm=matches(tp)
+		teq.lhs=expression(tt)
+		push!(m,teq)
+		if teq.lhs!=0
+			dmt=matches(teq,Div)
+			for d in dmt
+				push!(m,d)
+			end
+		end
+		tm=matches(teq)
 		if tm!=false
-			for ttp in matches(tp)
-				push!(m,ttp)
+			for tteq in matches(teq)
+				if !(tteq∈m)
+					push!(m,tteq)
+				end
 			end
 		end
 	end
-	for tp in m
-		tp.rhs=sumnum(componify(tp.rhs))
-		tp.lhs=sumnum(componify(tp.lhs))
+	for teq in m
+		teq.rhs=sumnum(componify(teq.rhs))
+		teq.lhs=sumnum(componify(teq.lhs))
 	end
 	return m
 end
@@ -79,4 +93,32 @@ function matches(eq::Equation,op)
 		return simplify(m)
 	end
 end
-
+function matches(eqa::Array{Equation})
+	neqa=deepcopy(eqa)
+	for eq in eqa
+		m=matches(eq)
+		for teq in m
+			push!(neqa,teq)
+		end
+	end
+	return neqa
+end
+function matches!(eqa::Array{Equation})
+	leqa=length(eqa)
+	for eq in 1:leqa
+		m=matches(eqa[eq])
+		for teq in m
+			if teq!=false&&indin(eqa,teq)==0
+				push!(eqa,teq)
+			end
+		end
+	end
+	return eqa
+end
+function matches(eq::Equation,recursions::Integer)
+	m=matches(eq)
+	for r in 1:recursions
+		matches!(m)
+	end
+	return m
+end

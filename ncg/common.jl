@@ -119,6 +119,7 @@ end
 
 +(x1::X,x2::X)=Expression([x1,:+,x2])
 -(x1::X,x2::X)=Expression([x1,:+,-1,x2])
+-(x::X)=Expression([-1,x])
 *(x1::X,x2::X)=Expression([x1,x2])
 
 abstract Operation <: Component
@@ -253,15 +254,25 @@ function extract(ex::Expression)
 end
 include("div.jl")
 function simplify(ex::Expression)
-	ex=sumsym(sumnum(componify(ex)))
-	if isa(ex,X)
+	if isa(ex,N)
 		return ex
+	end	
+	tex=0
+	nit=0
+	while tex!=ex
+		tex=ex
+		ex=sumsym(sumnum(componify(ex)))
+		ap=addparse(ex)
+		for term in 1:length(ap)
+			ap[term]=divify(ap[term])
+		end
+		ex=extract(expression(ap)) #better to check if res::N before calling expression instead of extracting?
+		nit+=1
+		if nit>10
+			warn("Stuck in simplify! Iteration #$nit: $res")
+		end
 	end
-	ap=addparse(ex)
-	for term in 1:length(ap)
-		ap[term]=divify(ap[term])
-	end
-	return extract(expression(ap)) #better to check before calling expression instead of extracting?
+	return ex 
 end
 simplify(x::X)=x
 function sumnum(ex::Expression)
@@ -339,3 +350,27 @@ function sumsym(ex::Expression)
 	end
 end
 sumsym(x::X)=x
+function findsyms(ex::Expression,symdic::Dict)
+	syminds=Dict()
+	for k in keys(symdic)
+		inds=Integer[]
+		for ci in 1:length(ex.components)
+			if ex.components[ci]==k
+				push!(inds,ci)
+			end
+		end
+		syminds[k]=inds
+	end
+	return syminds
+end
+function evaluate(ex::Ex,symdic::Dict)
+	ex=deepcopy(ex)
+	syminds=findsyms(ex,symdic)
+	for tup in symdic
+		sym,val=tup
+		for i in syminds[sym]
+			ex.components[i]=val
+		end
+	end
+	return simplify(ex)
+end

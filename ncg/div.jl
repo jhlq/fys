@@ -20,9 +20,20 @@ function divify(term::Array)
 	dis=indsin(term,Div)
 	remove=Int64[]
 	for i in dis
-		m=indin(term,term[i].x)		
-		if m>0
-			push!(remove,i,m)
+		if term[i].x==1
+			term[i]=1
+		elseif isa(term[i].x,Div)
+			term[i]=term[i].x.x
+		else
+			invinds=indsin(term,term[i].x)
+			removed=findin(invinds,remove)
+			deleteat!(invinds,removed)	
+			if !isempty(invinds)
+				push!(remove,i)
+				for invind in invinds
+					push!(remove,invind)
+				end
+			end
 		end
 	end
 	if !isempty(remove)

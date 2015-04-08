@@ -30,3 +30,7 @@ Evaluation function, evaluate(ex,[:x=>3,:y=>8]), division symbol :/
 Rename Pattern Equation? Equations operating on equations, sounds good, sounds like consciousness. Recursion into expressions.
 
 At this point the project is beatutiful like an unkept garden, there is so much growing here, will be interesting to see what is edible.
+
+x=0 currently matches x/x=1=0, how to detect such discrepancies? For evaluate a record can be kept on all divisions and an error thrown if a divided value is interpolated as 0.
+
+Add op *-1 to matches? So we catch x=y from -x=-y
