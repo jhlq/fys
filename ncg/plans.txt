@@ -28,3 +28,5 @@ Make rules invertible.
 Evaluation function, evaluate(ex,[:x=>3,:y=>8]), division symbol :/
 
 Rename Pattern Equation? Equations operating on equations, sounds good, sounds like consciousness. Recursion into expressions.
+
+At this point the project is beatutiful like an unkept garden, there is so much growing here, will be interesting to see what is edible.

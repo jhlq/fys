@@ -1,6 +1,7 @@
 import Base.push!
 
 abstract Component
+
 type Components <: Component
 	components
 	coef
@@ -25,7 +26,7 @@ type Expression #<: Component?
 end
 function expression(a::Array{Array})
 	if isempty(a)
-		return Expression([0])
+		return 0
 	end
 	ex=Expression(Any[])
 	for cc in a
@@ -37,13 +38,40 @@ function expression(a::Array{Array})
 	deleteat!(ex.components,length(ex.components))
 	return ex
 end
+function expression(cs::Array{Components})
+	if isempty(cs)
+		return Expression([0])
+	end
+	ex=Expression(Any[])
+	for cc in cs
+		if cc.coef!=0
+			if cc.coef!=1||isempty(cc.components) 
+				push!(ex.components,cc.coef)
+			end
+			for c in cc.components
+				push!(ex.components,c)
+			end
+			push!(ex.components,:+)
+		end
+	end
+	if length(ex.components)==0
+		return Expression([0])
+	else
+		deleteat!(ex.components,length(ex.components))
+		return ex
+	end
+end
+
 ==(ex1::Expression,ex2::Expression)=ex1.components==ex2.components
 ==(ex::Expression,zero::Integer)=length(ex.components)==1&&ex.components[1]==zero
 push!(ex::Expression,a)=push!(ex.components,a)
 
+N=Union(Number,Symbol)
 X=Union(Number,Symbol,Component)
 Ex=Union(Symbol,Component,Expression)
 EX=Union(Number,Symbol,Component,Expression)
+
+expression(x::X)=Expression([x])
 
 push!(x::X,a)=Expression([x,a])
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
@@ -135,7 +163,7 @@ function addparse(ex::Expression)
 	push!(parsed,ex.components[s:end])
 	return parsed
 end
-addparse(x::X)=x
+addparse(x::X)=Array[Any[x]]
 function componify(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
@@ -217,6 +245,24 @@ function simplify_dep(ex::Expression)
 		return Expression(exa)
 	end
 end
+function extract(ex::Expression)
+	if length(ex.components)==1
+		return ex.components[1]
+	end
+	return ex
+end
+include("div.jl")
+function simplify(ex::Expression)
+	ex=sumsym(sumnum(componify(ex)))
+	if isa(ex,X)
+		return ex
+	end
+	ap=addparse(ex)
+	for term in 1:length(ap)
+		ap[term]=divify(ap[term])
+	end
+	return extract(expression(ap)) #better to check before calling expression instead of extracting?
+end
 simplify(x::X)=x
 function sumnum(ex::Expression)
 	if ex==0
@@ -254,6 +300,42 @@ function sumnum(ex::Expression)
 	if numsum!=0
 		push!(nterms,[numsum])
 	end
-	return expression(nterms)
+	if length(nterms)==1&&length(nterms[1])==1
+		return nterms[1][1]
+	else
+		return expression(nterms)
+	end
 end
-sumnum(x::X)=x #no no needs to recurse into components such as Cos.x, move SingleArg to common and add check
+sumnum(x::X)=x #needs to recurse into components such as Cos.x, move SingleArg to common and add check
+function sumsym(ex::Expression)
+	ap=addparse(ex)
+	nap=length(ap)
+	cs=Array(Components,0)
+	for add in 1:nap
+		tcs=Array(Ex,0)
+		coef=1
+		for term in ap[add]
+			if typeof(term)<:Ex
+				push!(tcs,term)
+			elseif typeof(term)<:Number
+				coef*=term
+			else			
+				warn("Don't know how to handle $term")
+			end
+		end
+		com=Components(tcs,coef)
+		ind=indin(cs,com)
+		if ind==0
+			push!(cs,com)
+		else
+			cs[ind].coef+=com.coef
+		end
+	end
+	ret=expression(cs)
+	if length(ret.components)==1
+		return ret.components[1]
+	else
+		return ret
+	end
+end
+sumsym(x::X)=x
