@@ -30,9 +30,7 @@ function divify(term::Array)
 			deleteat!(invinds,removed)	
 			if !isempty(invinds)
 				push!(remove,i)
-				for invind in invinds
-					push!(remove,invind)
-				end
+				push!(remove,invinds[end])
 			end
 		end
 	end

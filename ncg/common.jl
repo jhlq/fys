@@ -405,6 +405,15 @@ function sumsym(ex::Expression)
 	end
 end
 sumsym(x::X)=x
+function findsyms(ex::Expression)
+	syms=Set{Symbol}()
+	for c in ex.components
+		if isa(c,Symbol)
+			push!(syms,c)
+		end
+	end
+	return syms
+end
 function findsyms(ex::Expression,symdic::Dict)
 	syminds=Dict()
 	for k in keys(symdic)
@@ -418,6 +427,23 @@ function findsyms(ex::Expression,symdic::Dict)
 	end
 	return syminds
 end
+function hasex(symdic::Dict)
+	for v in values(symdic)
+		if isa(v,Ex)
+			return true
+		end
+	end
+	return false
+end
+function delexs(symdic::Dict)
+	sd=deepcopy(symdic)
+	for k in keys(symdic)
+		if isa(symdic[k],Ex)
+			delete!(sd,k)
+		end
+	end
+	return sd
+end
 function evaluate(ex::Ex,symdic::Dict)
 	ex=simplify(ex)
 	syminds=findsyms(ex,symdic)
@@ -427,5 +453,11 @@ function evaluate(ex::Ex,symdic::Dict)
 			ex.components[i]=val
 		end
 	end
-	return simplify(ex)
+	ex=simplify(ex)
+	if isa(ex,Expression)&&hasex(symdic)
+		symdic=delexs(symdic)
+		ex=evaluate(ex,symdic)
+	end
+	return ex
 end
+evaluate(x::Number,symdic::Dict)=x#evaluate(Expression([x],symdic))

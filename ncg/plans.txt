@@ -34,3 +34,7 @@ At this point the project is beatutiful like an unkept garden, there is so much 
 x=0 currently matches x/x=1=0, how to detect such discrepancies? For evaluate a record can be kept on all divisions and an error thrown if a divided value is interpolated as 0.
 
 Add op *-1 to matches? So we catch x=y from -x=-y
+
+Behavior for inserting expressions in evaluate?
+
+Sort all expressions

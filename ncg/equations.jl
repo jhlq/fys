@@ -6,7 +6,7 @@ type Equation
 	rhs::EX
 end
 equation(ex::EX)=Equation(ex,0)
-==(eq1::Equation,eq2::Equation)=eq1.lhs==eq2.lhs&&eq1.lhs==eq2.lhs
+==(eq1::Equation,eq2::Equation)=eq1.lhs==eq2.lhs&&eq1.rhs==eq2.rhs
 function equivalent(eq1::Equation,eq2::Equation)
 	m=matches(eq2)
 	for eq in m
@@ -44,7 +44,9 @@ function matches(eq::Equation)
 		if typeof(teq.rhs)==Expression
 			push!(teq.rhs,:+)
 			push!(teq.rhs,-1)
-			push!(teq.rhs,terms[term])
+			for fac in terms[term]
+				push!(teq.rhs,fac)
+			end
 		else
 			teq.rhs=Expression([teq.rhs,:+,-1,terms[term]])
 		end
@@ -59,7 +61,7 @@ function matches(eq::Equation)
 		end
 		tm=matches(teq)
 		if tm!=false
-			for tteq in matches(teq)
+			for tteq in tm
 				if !(tteq∈m)
 					push!(m,tteq)
 				end
@@ -122,3 +124,17 @@ function matches(eq::Equation,recursions::Integer)
 	end
 	return m
 end
+matches(ex::Expression)=matches(equation(ex))
+evaluate(eq::Equation,symdic::Dict)=(evaluate(eq.lhs,symdic),evaluate(eq.rhs,symdic))
+function solve(eq::Equation)
+	seq=simplify(eq)
+	mat=matches(seq)
+	sol=Equation[]
+	for m in mat
+		if isa(m.lhs,Symbol)
+			push!(sol,m)
+		end
+	end
+	return sol
+end
+solve(ex::Ex)=solve(equation(ex))
