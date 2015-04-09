@@ -77,10 +77,11 @@ push!(x::X,a)=Expression([x,a])
 +(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,ex2);ex;end
 +(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,a);ex;end
 -(ex::Expression,a::X)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
+-(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,ex2);ex;end
 +(a::X,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,a);ex;end
 #-(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,:+);push!(ex.components,-1);push!(ex.components,a);ex;end
 #-(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,:+);insert!(ex.components,1,-1);insert!(ex.components,1,a);ex;end
-*(ex1::Expression,ex2::Expression)=begin;ex=deepcopy(ex1);push!(ex.components,ex2);ex;end
+*(ex1::Expression,ex2::Expression)=Expression([deepcopy(ex1),deepcopy(ex2)])
 #*(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
 #*(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
 /(ex::Ex,n::Number)=*(1/n,ex)
@@ -165,7 +166,7 @@ function addparse(ex::Expression)
 	return parsed
 end
 addparse(x::X)=Array[Any[x]]
-function componify(ex::Expression,raw=false)
+function componify_dep(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
 	for term in 1:lex
@@ -183,7 +184,61 @@ function componify(ex::Expression,raw=false)
 		return Expression(stuff)
 	end		
 end
-componify(x::X)=x
+function componify(ex::Expression,raw=false)
+	ap=addparse(ex)
+	for term in 1:length(ap)
+		exs=Expression[]
+		xs=X[]
+		for fac in ap[term]
+			if isa(fac,Array)
+				push!(exs,componify(Expression(fac)))
+			elseif isa(fac,Expression)
+				push!(exs,componify(fac))
+			else
+				push!(xs,fac)
+			end
+		end
+		if isempty(exs)
+			continue
+		else
+			tap=addparse(exs[1])
+			for x in xs
+				for tterm in tap
+					push!(tterm,x)
+				end
+			end
+			while length(exs)>1
+				ap1=addparse(exs[1])
+				ap2=addparse(exs[2])
+				lap1,lap2=length(ap1),length(ap2)
+				multed=Array[]
+				for l in 1:lap1*lap2
+					push!(multed,Any[])
+				end
+				for l1 in 0:lap1-1
+					for l2 in 1:lap2
+						for fac in ap1[l1+1]
+							push!(multed[l2+l1*lap2],fac)
+						end
+						for fac in ap2[l2]
+							push!(multed[l2+l1*lap2],fac)
+						end
+					end
+				end
+				exs[2]=expression(multed)
+				deleteat!(exs,1)
+			end
+			ap[term]=exs[1].components
+		end
+	end
+	if raw
+		return ap
+	else
+		return expression(ap)
+	end
+end
+componify(c::Component)=begin;c=deepcopy(c);c.x=componify(c.x);c;end
+componify(x::N)=x
 function simplify_dep2(ex::Expression)
 	componify(sumnum(ex))
 end
@@ -364,7 +419,7 @@ function findsyms(ex::Expression,symdic::Dict)
 	return syminds
 end
 function evaluate(ex::Ex,symdic::Dict)
-	ex=deepcopy(ex)
+	ex=simplify(ex)
 	syminds=findsyms(ex,symdic)
 	for tup in symdic
 		sym,val=tup
