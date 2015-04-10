@@ -1,7 +1,11 @@
 import Base.push!
 
 abstract Component
-
+abstract SingleArg <: Component
+==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
+function getarg(c::Component,n)
+	getfield(c,names(c)[n])
+end
 type Components <: Component
 	components
 	coef
@@ -308,6 +312,7 @@ function extract(ex::Expression)
 	return ex
 end
 include("div.jl")
+include("sqrt.jl")
 function simplify(ex::Expression)
 	if isa(ex,N)
 		return ex
@@ -330,6 +335,17 @@ function simplify(ex::Expression)
 	return ex 
 end
 simplify(x::X)=x
+function simplify!(a::Array)
+	if length(a)==1
+		return simplify(a[1])
+	else
+		for i in 1:length(a)
+			a[i]=simplify(a[i])
+		end
+	end
+	return a
+end
+simplify(a::Array)=simplify!(deepcopy(a))
 function sumnum(ex::Expression)
 	if ex==0
 		return 0
@@ -461,3 +477,11 @@ function evaluate(ex::Ex,symdic::Dict)
 	return ex
 end
 evaluate(x::Number,symdic::Dict)=x#evaluate(Expression([x],symdic))
+
+
+import Base.start, Base.next, Base.done
+start(ex::Expression)=(1,addparse(ex))
+function next(ex::Expression,state)
+	return (state[2][state[1]],(state[1]+1,state[2]))
+end
+done(ex::Expression,state)=state[1]>length(state[2])

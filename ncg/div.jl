@@ -1,8 +1,6 @@
 import Base./
 #include("common.jl")
 
-abstract SingleArg <: Component
-==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
 type ÷ <: SingleArg #\div
 	x
 end

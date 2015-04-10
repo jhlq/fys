@@ -26,17 +26,22 @@ function simplify(eqa::Array{Equation})
 end
 relations=Equation[]
 eq1=Equation(cos(:x)-sin(:x+pi/2),0)
+function pushallunique!(a1::Array,a2::Array)
+	for d in a2
+		if !(d∈a1)
+			push!(a1,d)
+		end
+	end
+	return a1
+end
 function matches(eq::Equation)
 	if eq.lhs==0
 		return false #it only moves from left to right
 	end
+	eq=simplify(eq)
 	m=Equation[]
-	dm=matches(eq,Div)
-	for d in dm
-		if !(d∈m)
-			push!(m,d)
-		end
-	end
+	pushallunique!(m,matches(eq,Div))
+	pushallunique!(m,matches(eq,Sqrt))
 	terms=addparse(eq.lhs)
 	for term in 1:length(terms)
 		teq=deepcopy(eq)
@@ -93,6 +98,12 @@ function matches(eq::Equation,op)
 			end
 		end
 		return simplify(m)
+	elseif op==Sqrt
+		lhs=deepcopy(eq.lhs)
+		rhs=deepcopy(eq.rhs)
+		m=Equation[]
+		push!(m,Equation(Sqrt(lhs),Sqrt(rhs)))
+		return simplify(m)
 	end
 end
 function matches(eqa::Array{Equation})
@@ -126,9 +137,9 @@ function matches(eq::Equation,recursions::Integer)
 end
 matches(ex::Expression)=matches(equation(ex))
 evaluate(eq::Equation,symdic::Dict)=(evaluate(eq.lhs,symdic),evaluate(eq.rhs,symdic))
-function solve(eq::Equation)
+function solve(eq::Equation,rec::Integer=3)
 	seq=simplify(eq)
-	mat=matches(seq)
+	mat=matches(seq,rec)
 	sol=Equation[]
 	for m in mat
 		if isa(m.lhs,Symbol)
@@ -138,3 +149,4 @@ function solve(eq::Equation)
 	return sol
 end
 solve(ex::Ex)=solve(equation(ex))
+
