@@ -7,6 +7,7 @@ type Equation
 end
 equation(ex::EX)=Equation(ex,0)
 ==(eq1::Equation,eq2::Equation)=eq1.lhs==eq2.lhs&&eq1.rhs==eq2.rhs
+include("matchers.jl")
 function equivalent(eq1::Equation,eq2::Equation)
 	m=matches(eq2)
 	for eq in m
@@ -16,6 +17,7 @@ function equivalent(eq1::Equation,eq2::Equation)
 	end
 	return false
 end
+simplify!(eq::Equation)=begin;simplify!(eq.lhs);simplify!(eq.rhs);eq;end
 simplify(eq::Equation)=Equation(simplify(eq.lhs),simplify(eq.rhs))
 function simplify(eqa::Array{Equation})
 	neqa=Equation[]

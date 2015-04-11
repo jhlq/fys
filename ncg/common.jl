@@ -10,8 +10,18 @@ type Components <: Component
 	components
 	coef
 end
-
-function ==(cs1::Components, cs2::Components)
+type Term
+	factors
+end
+function ==(t1::Term,t2::Term)
+	for p in permutations(t2.factors)
+		if t1.factors==p
+			return true
+		end
+	end
+	return false
+end
+function ==(cs1::Components,cs2::Components)
 	nc=length(cs1.components)
 	if nc != length(cs2.components)
 		return false
@@ -28,6 +38,10 @@ end
 type Expression #<: Component?
 	components::Array{Any}
 end
+type ApExpression #<: Component?
+	components::Array{Any}
+	ap::Array{Term}
+end
 function expression(a::Array{Array})
 	if isempty(a)
 		return 0
@@ -42,6 +56,21 @@ function expression(a::Array{Array})
 	deleteat!(ex.components,length(ex.components))
 	return ex
 end
+function expression(a::Array{Term})
+	if isempty(a)
+		return 0
+	end
+	ex=Expression(Any[])
+	for cc in a
+		push!(ex.components,cc.factors)
+		push!(ex.components,:+)
+	end
+	deleteat!(ex.components,length(ex.components))
+	return ex
+end
+expression(t::Term)=Expression(t.factors)
+ctranspose(t::Term)=Expression(t.factors)
+#ctranspose(a::Array{Term})=expression(a)
 function expression(cs::Array{Components})
 	if isempty(cs)
 		return Expression([0])
@@ -69,6 +98,25 @@ end
 ==(ex1::Expression,ex2::Expression)=ex1.components==ex2.components
 ==(ex::Expression,zero::Integer)=length(ex.components)==1&&ex.components[1]==zero
 push!(ex::Expression,a)=push!(ex.components,a)
+function ==(ex1::ApExpression,ex2::ApExpression)
+	if length(ex1.ap)!=length(ex2.ap)
+		return false
+	end
+	for p1 in permutations(ex1.ap)
+		cont=false
+		for l in 1:length(p1)
+			if p1[l]!=ex2.ap[l]
+				cont=true
+				break
+			end
+		end
+		if cont
+			continue
+		end
+		return true
+	end
+	return false
+end
 
 N=Union(Number,Symbol)
 X=Union(Number,Symbol,Component)
@@ -89,7 +137,7 @@ push!(x::X,a)=Expression([x,a])
 #*(ex::Expression,a)=begin;ex=deepcopy(ex);push!(ex.components,a);ex;end
 #*(a,ex::Expression)=begin;ex=deepcopy(ex);insert!(ex.components,1,a);ex;end
 /(ex::Ex,n::Number)=*(1/n,ex)
-function *(a::Number,ex::Expression)
+function *(a::X,ex::Expression)
 	ex=deepcopy(ex)
 	insert!(ex.components,1,a)
 	ps=findin(ex.components,[:+])
@@ -158,6 +206,7 @@ function indsin(array,typ::Type)
 	return ind
 end
 function addparse(ex::Expression)
+	#ex=componify(ex)
 	adds=findin(ex.components,[:+])
 	nadd=length(adds)+1
 	parsed=Array(Array,0)
@@ -170,6 +219,19 @@ function addparse(ex::Expression)
 	return parsed
 end
 addparse(x::X)=Array[Any[x]]
+function addparse(ex::Expression,term::Bool)
+	adds=findin(ex.components,[:+])
+	nadd=length(adds)+1
+	parsed=Array(Term,0)
+	s=1
+	for add in adds
+		push!(parsed,Term(ex.components[s:add-1]))
+		s=add+1
+	end
+	push!(parsed,Term(ex.components[s:end]))
+	return parsed
+end
+addparse(x::X,term::Bool)=Array[Term([x])]
 function componify_dep(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
@@ -314,9 +376,6 @@ end
 include("div.jl")
 include("sqrt.jl")
 function simplify(ex::Expression)
-	if isa(ex,N)
-		return ex
-	end	
 	tex=0
 	nit=0
 	while tex!=ex
@@ -334,7 +393,9 @@ function simplify(ex::Expression)
 	end
 	return ex 
 end
+simplify!(ex::Expression)=begin;ex.components=simplify(ex).components;ex;end
 simplify(x::X)=x
+simplify!(x::X)=x
 function simplify!(a::Array)
 	if length(a)==1
 		return simplify(a[1])
