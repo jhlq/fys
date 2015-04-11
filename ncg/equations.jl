@@ -7,7 +7,6 @@ type Equation
 end
 equation(ex::EX)=Equation(ex,0)
 ==(eq1::Equation,eq2::Equation)=eq1.lhs==eq2.lhs&&eq1.rhs==eq2.rhs
-include("matchers.jl")
 function equivalent(eq1::Equation,eq2::Equation)
 	m=matches(eq2)
 	for eq in m
@@ -36,12 +35,19 @@ function pushallunique!(a1::Array,a2::Array)
 	end
 	return a1
 end
+pushallunique!(a1::Array,b::Bool)=Nothing
+include("matchers.jl")
+matchfuns=Function[]
+push!(matchfuns,quadratic)
 function matches(eq::Equation)
 	if eq.lhs==0
 		return false #it only moves from left to right
 	end
 	eq=simplify(eq)
 	m=Equation[]
+	for fun in matchfuns
+		pushallunique!(m,fun(eq))
+	end
 	pushallunique!(m,matches(eq,Div))
 	pushallunique!(m,matches(eq,Sqrt))
 	terms=addparse(eq.lhs)
@@ -106,6 +112,12 @@ function matches(eq::Equation,op)
 		m=Equation[]
 		push!(m,Equation(Sqrt(lhs),Sqrt(rhs)))
 		return simplify(m)
+	elseif op==Function
+		m=Equation[]
+		for fun in matchfuns
+			pushallunique!(m,fun(eq))
+		end
+		return simplify(m)
 	end
 end
 function matches(eqa::Array{Equation})
@@ -139,7 +151,7 @@ function matches(eq::Equation,recursions::Integer)
 end
 matches(ex::Expression)=matches(equation(ex))
 evaluate(eq::Equation,symdic::Dict)=(evaluate(eq.lhs,symdic),evaluate(eq.rhs,symdic))
-function solve(eq::Equation,rec::Integer=3)
+function solve(eq::Equation,rec::Integer=1)
 	seq=simplify(eq)
 	mat=matches(seq,rec)
 	sol=Equation[]
@@ -150,5 +162,16 @@ function solve(eq::Equation,rec::Integer=3)
 	end
 	return sol
 end
+function solve(eq::Equation,op)
+	seq=simplify(eq)
+	mat=matches(seq,op)
+	sol=Equation[]
+	for m in mat
+		if isa(m.lhs,Symbol)
+			push!(sol,m)
+		end
+	end
+	return sol
+end
 solve(ex::Ex)=solve(equation(ex))
-
+solve(ex::Ex,a)=solve(equation(ex),a)

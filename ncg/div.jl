@@ -44,3 +44,12 @@ function divify(term::Array)
 	end	
 end
 divify(x::X)=x
+function simplify!(d::Div)
+	x=simplify(getarg(d))
+	if isa(x,Number)
+		return 1/x
+	end
+	d.x=x
+	return d
+end
+simplify(d::Div)=simplify!(deepcopy(d))

@@ -3,7 +3,7 @@ import Base.push!
 abstract Component
 abstract SingleArg <: Component
 ==(sa1::SingleArg,sa2::SingleArg)=sa1.x==sa2.x #getfield of names for more general, getfield(a,names(a)[1])
-function getarg(c::Component,n)
+function getarg(c::Component,n::Integer=1)
 	getfield(c,names(c)[n])
 end
 type Components <: Component
@@ -173,6 +173,7 @@ end
 +(x1::X,x2::X)=Expression([x1,:+,x2])
 -(x1::X,x2::X)=Expression([x1,:+,-1,x2])
 -(x::X)=Expression([-1,x])
+-(ex::Expression)=-1*ex
 *(x1::X,x2::X)=Expression([x1,x2])
 
 abstract Operation <: Component
@@ -232,6 +233,21 @@ function addparse(ex::Expression,term::Bool)
 	return parsed
 end
 addparse(x::X,term::Bool)=Array[Term([x])]
+function has(term1,term2)
+	if length(term1)<length(term2)
+		return false
+	end
+	for p1 in permutations(term1)
+		for p2 in permutations(term2)
+			for l in 1:length(term2)
+				if p1[1:l]==p2[1:l]
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
 function componify_dep(ex::Expression,raw=false)
 	lex=length(ex.components)
 	stuff=Array(Any,0)	
@@ -260,6 +276,9 @@ function componify(ex::Expression,raw=false)
 				push!(exs,componify(Expression(fac)))
 			elseif isa(fac,Expression)
 				push!(exs,componify(fac))
+			elseif isa(fac,Component)
+				fac.x=componify(fac.x)
+				push!(xs,fac)
 			else
 				push!(xs,fac)
 			end
@@ -273,6 +292,7 @@ function componify(ex::Expression,raw=false)
 					push!(tterm,x)
 				end
 			end
+			exs[1]=expression(tap)
 			while length(exs)>1
 				ap1=addparse(exs[1])
 				ap2=addparse(exs[2])
@@ -376,6 +396,7 @@ end
 include("div.jl")
 include("sqrt.jl")
 function simplify(ex::Expression)
+	ex=deepcopy(ex)
 	tex=0
 	nit=0
 	while tex!=ex
@@ -384,6 +405,11 @@ function simplify(ex::Expression)
 		ap=addparse(ex)
 		for term in 1:length(ap)
 			ap[term]=divify(ap[term])
+			for fac in 1:length(ap[term])
+				#println(fac,simplify(fac))
+				ap[term][fac]=simplify(ap[term][fac])
+				#println(term)
+			end
 		end
 		ex=extract(expression(ap)) #better to check if res::N before calling expression instead of extracting?
 		nit+=1
@@ -394,8 +420,10 @@ function simplify(ex::Expression)
 	return ex 
 end
 simplify!(ex::Expression)=begin;ex.components=simplify(ex).components;ex;end
-simplify(x::X)=x
-simplify!(x::X)=x
+simplify(c::Component)=begin;deepcopy(c).x=simplify(getarg(c));c;end
+simplify!(c::Component)=begin;c.x=simplify!(getarg(c));c;end
+simplify(x::N)=x
+simplify!(x::N)=x
 function simplify!(a::Array)
 	if length(a)==1
 		return simplify(a[1])

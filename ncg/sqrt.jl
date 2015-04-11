@@ -7,7 +7,11 @@ sqrt(a)=Sqrt(a)
 
 function simplify!(sq::Sqrt)
 	if isa(sq.x,Number)
-		return sqrt(sq.x)
+		if isreal(sq.x)&&sq.x<0
+			return sqrt(complex(sq.x))
+		else
+			return sqrt(sq.x)
+		end
 	elseif isa(sq.x,Expression)
 		sq.x=simplify(sq.x)
 		ap=addparse(sq.x)
