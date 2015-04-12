@@ -40,16 +40,11 @@ include("matchers.jl")
 matchfuns=Function[]
 push!(matchfuns,quadratic)
 function matches(eq::Equation)
+	m=Equation[]
 	if eq.lhs==0
-		return false #it only moves from left to right
+		return m #it only moves from left to right
 	end
 	eq=simplify(eq)
-	m=Equation[]
-	for fun in matchfuns
-		pushallunique!(m,fun(eq))
-	end
-	pushallunique!(m,matches(eq,Div))
-	pushallunique!(m,matches(eq,Sqrt))
 	terms=addparse(eq.lhs)
 	for term in 1:length(terms)
 		teq=deepcopy(eq)
@@ -85,6 +80,20 @@ function matches(eq::Equation)
 		teq.rhs=sumnum(componify(teq.rhs))
 		teq.lhs=sumnum(componify(teq.lhs))
 	end
+	return m
+end
+function matches(eq::Equation,all::Bool)
+	if eq.lhs==0
+		return false #it only moves from left to right
+	end
+	eq=simplify(eq)
+	m=Equation[]
+	for fun in matchfuns
+		pushallunique!(m,fun(eq))
+	end
+	pushallunique!(m,matches(eq,Div))
+	pushallunique!(m,matches(eq,Sqrt))
+	pushallunique!(m,matches(eq))	
 	return m
 end
 function matches(eq::Equation,op)
@@ -167,7 +176,7 @@ function solve(eq::Equation,op)
 	mat=matches(seq,op)
 	sol=Equation[]
 	for m in mat
-		if isa(m.lhs,Symbol)
+		if length(addparse(m.lhs))==1
 			push!(sol,m)
 		end
 	end
