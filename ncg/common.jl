@@ -550,7 +550,8 @@ function delexs(symdic::Dict)
 	end
 	return sd
 end
-function evaluate(ex::Ex,symdic::Dict)
+import Base.replace
+function replace(ex::Ex,symdic::Dict)
 	ex=simplify(ex)
 	syminds=findsyms(ex,symdic)
 	for tup in symdic
@@ -559,7 +560,10 @@ function evaluate(ex::Ex,symdic::Dict)
 			ex.components[i]=val
 		end
 	end
-	ex=simplify(ex)
+	return componify(ex)
+end
+function evaluate(ex::Ex,symdic::Dict)
+	ex=simplify(replace(ex,symdic))
 	if isa(ex,Expression)&&hasex(symdic)
 		symdic=delexs(symdic)
 		ex=evaluate(ex,symdic)

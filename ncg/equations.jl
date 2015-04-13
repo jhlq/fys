@@ -4,8 +4,12 @@ include("trigo.jl")
 type Equation
 	lhs::EX
 	rhs::EX
+	divisions
+	#Equation(ex1::EX,ex2::EX)=new(ex1,ex2,Any[])
 end
-equation(ex::EX)=Equation(ex,0)
+Equation(ex1::EX,ex2::EX)=Equation(ex1,ex2,Any[]) #or Set()? Cannot Set(:x) in 3.6
+equation(ex::EX)=Equation(ex,0,Any[])
+equation(ex1::EX,ex2::EX)=Equation(ex1,ex2,Any[])
 ==(eq1::Equation,eq2::Equation)=eq1.lhs==eq2.lhs&&eq1.rhs==eq2.rhs
 function equivalent(eq1::Equation,eq2::Equation)
 	m=matches(eq2)
@@ -111,10 +115,15 @@ function matches(eq::Equation,op)
 				for t in nr
 					push!(t,Div(deepcopy(fac)))
 				end
-				push!(m,Equation(expression(nl),expression(nr)))
+				nl=simplify(expression(nl))
+				nr=simplify(expression(nr))
+				teq=Equation(nl,nr,Any[fac])
+				if !(teq∈m)&&!(isa(nl,Number)&&isa(nr,Number)&&nl!=nr) #prevents 1=0 from x=0
+					push!(m,teq)
+				end
 			end
 		end
-		return simplify(m)
+		return m
 	elseif op==Sqrt
 		lhs=deepcopy(eq.lhs)
 		rhs=deepcopy(eq.rhs)
@@ -159,7 +168,14 @@ function matches(eq::Equation,recursions::Integer)
 	return m
 end
 matches(ex::Expression)=matches(equation(ex))
-evaluate(eq::Equation,symdic::Dict)=(evaluate(eq.lhs,symdic),evaluate(eq.rhs,symdic))
+function evaluate(eq::Equation,symdic::Dict)
+	for key in keys(symdic)
+		if symdic[key]==0&&key∈eq.divisions
+			error("Assigning zero to a value that the equation has been divided by.")
+		end
+	end
+	return (evaluate(eq.lhs,symdic),evaluate(eq.rhs,symdic))
+end
 function solve(eq::Equation,rec::Integer=1)
 	seq=simplify(eq)
 	mat=matches(seq,rec)
