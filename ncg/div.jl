@@ -14,7 +14,7 @@ function /(ex::Expression,x::Ex)
 	return expression(ap)
 end
 
-function divify(term::Array)
+function divify!(term::Array)
 	dis=indsin(term,Div)
 	remove=Int64[]
 	for i in dis
@@ -22,6 +22,20 @@ function divify(term::Array)
 			term[i]=1
 		elseif isa(term[i].x,Div)
 			term[i]=term[i].x.x
+		elseif isa(term[i].x,Expression)
+			ap=addparse(term[i].x)
+			if length(ap)==1
+				aprem=Integer[]
+				for fac in 1:length(ap[1])
+					if isa(ap[1][fac],Div)
+						push!(term,ap[1][fac].x)
+						push!(aprem,fac)
+					end
+				end
+				deleteat!(ap[1],aprem)
+				term[i].x=expression(ap)
+				#println(term)
+			end
 		else
 			invinds=indsin(term,term[i].x)
 			removed=findin(invinds,remove)
@@ -43,6 +57,7 @@ function divify(term::Array)
 		return term
 	end	
 end
+divify(term::Array)=divify!(deepcopy(term))
 divify(x::X)=x
 function simplify!(d::Div)
 	x=simplify(getarg(d))
