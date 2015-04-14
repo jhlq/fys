@@ -85,6 +85,14 @@ type PRL<:Operator #Photon Raising Lowering
 	photon::Photon
 	raise::Bool
 end
+function display(tup::((PRL...,)...,))
+	str="("
+	for t in tup
+		str*=" ($(t[1].raise), $(t[2].raise)),"
+	end
+	str=str[1:end-1]*" )"
+	println(str)
+end
 function ctranspose(a::PRL)
 	ap=deepcopy(a)
 	#for vi in 1:length(ap.vec)
@@ -325,26 +333,31 @@ function integrate(pf::PhotonField,abstol=precision[2])
 end
 function getexp(pfs::PhotonFields,X)
 	expses=length(pfs.exponents)
-	Xlocs=Array(Any,expses)
+	#Xlocs=Array(Any,expses)
+	#for i in 1:expses
+	#	Xlocs[i]=(findin(pfs.exponents[i][1],[:X])[1],findin(pfs.exponents[i][2],[:X])[1])
+	#end
+	Xlocs=4
+	ds=zeros(Complex64,expses)
 	for i in 1:expses
-		Xlocs[i]=(findin(pfs.exponents[i][1],[:X])[1],findin(pfs.exponents[i][1],[:X])[1])
+		ds[i]=pfs.exponents[i][1][1]*dot(pfs.exponents[i][1][Xlocs-1],X)+pfs.exponents[i][2][1]*dot(pfs.exponents[i][2][Xlocs-1],X)
+		#ds[i]*=multarr(pfs.exponents[1][1:Xlocs-3])
 	end
-	ds=zeros(expses)
-	for i in 1:expses
-		ds[i]=dot(pfs.exponents[1][Xloc[i]-1][1],X)
-		ds[i]*=multarr(pfs.exponents[1][1:Xloc[i][1]-3])
-	end
-		d1*=multarr(pfs.exponents[1][1:Xloc1[1]-3])
-	d2=dot(pfs.exponents[2][Xloc2-1][1],X)
-	d2*=multarr(pfs.exponents[2][1:Xloc2[1]-3])
+	#d1*=multarr(pfs.exponents[1][1:Xloc1[1]-3])
+	#d2=dot(pfs.exponents[2][Xloc2-1][1],X)
+	#d2*=multarr(pfs.exponents[2][1:Xloc2[1]-3])
 	return ds
 end
-function integrate(pf::PhotonField,abstol=precision[2])
-	(e1,e2)=getexp(pf,rand(4))
-	if e1!=1 && e2!=1
-		return (0,0)
+function integrate(pfs::PhotonFields,abstol=precision[2])
+	exps=getexp(pfs,rand(4)) #this can be made more efficient by checking if pfs.exponents[indecies] cancel 
+	nterms=length(exps)
+	results=zeros(4)
+	for term in 1:nterms
+		if exps[term]==0
+			results[term]=1
+		end
 	end
-
+	return results
 end
 function braket_fock(s1::PhotonState,s2::PhotonState)
 	sort(s1.K)==sort(s2.K)?1:0
@@ -451,6 +464,8 @@ function t7()
 	pf2=pimu()
 	pfs=pf1*pf2
 	getexp(pfs,rand(4))
+	integrate(pfs)
+	pfs.operators
 end
 
 end
