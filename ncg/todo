@@ -1,5 +1,0 @@
- m=matches(equation(:x^2+:y*:x),Div)
-2-element Array{Equation,1}:
- Equation(Expression({:x,:+,:y}),0,{:x})                                                                     
- Equation(Expression({:x,:x,÷(Expression({:y,:x})),:+,:y,:x,÷(Expression({:y,:x}))}),0,{Expression({:y,:x})})
-fix so each factor is divided by and so that yx/yx is 1

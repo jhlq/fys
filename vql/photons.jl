@@ -467,13 +467,5 @@ function t7()
 	integrate(pfs)
 	pfs.operators
 end
-function t8()
-	pf=Amu()
-	pf=Amu()
-	pfsd1=der(pf)*der(pf)
-	pfsd2=der(pf,2)*der(pf,2)
-	pfsd3=der(pf,3)*der(pf,3)
-	pfsd4=der(pf,4)*der(pf,4)
-end
 
 end
