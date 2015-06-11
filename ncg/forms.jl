@@ -51,9 +51,11 @@ function ∧(f1::Differential,f2::Differential)
 end
 function ∧(pf::PForm,f::Differential)
 	push!(pf.forms,f)
+	pf
 end
 function ∧(f::Differential,pf::PForm)
 	insert!(pf.forms,1,f)
+	pf
 end
 wedge=∧
 type Derivative

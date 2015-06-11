@@ -1,0 +1,7 @@
+julia> m=matches(equation(:x+:y),3)[4]
+Equation(1,Expression({-1,:x,÷(:y)}))
+
+julia> matches(m)
+2-element Array{Equation,1}:
+ Equation(1,Expression({-1,:x,÷(:y)}))     
+ Equation(0,Expression({-1,:x,÷(:y),:+,1}))

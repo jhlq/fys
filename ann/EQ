@@ -1,0 +1,9 @@
+In the Equivalent Expression question, you do not get to assume that we are still talking about the solution from the previous problems. Instead, use these identities: d[f(a*x)]/d[x] = (d[f(a*x)]/d[a*x])*(d[a*x]/d[x]) = (d[f(a*x)]/d[a*x])*a, 
+
+so d[f(a*x)]/d[a*x] = (1/a)*d[f(a*x)]/d[x], 
+
+and d^2[f(a*x)]/d[x^2] = d[ d[f(a*x)]/d[x] ]/d[x] = d[ (d[f(a*x)]/d[a*x])*a ]/d[x] =
+
+ a*d[ (d[f(a*x)]/d[a*x]) ]/d[x] = a*( d[ (d[f(a*x)]/d[a*x]) ]/d[a*x] )*(d[a*x]/d[x]) =
+
+ a*( d[ (d[f(a*x)]/d[a*x]) ]/d[a*x] )*a = a^2*d^2[f(a*x)]/d[(a*x)^2], so d^2[f(a*x)]/d[a*x]^2 = (1/a^2)*d^2[f(a*x)]/d[x^2]. By applying these to d^2[u(a*t, c*x)]/d[(c*x)^2] and d[u(a*t, c*t)]/d[a*t], then plug the results into the equivalent form of the equation. From there, it should be easy to see what needs to be equal to what.

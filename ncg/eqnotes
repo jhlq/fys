@@ -1,0 +1,19 @@
+matches(Equation(:x+:y,0))
+matches(Equation(:x,0))
+
+
+matches(Equation(1,Expression({-1,:x,÷(:y)})))
+
+
+eq=equation(:x+:y)
+m=matches(equation(:x+:y))
+
+
+julia> ex=(:a+:b)*(:c+:d)*(:e+:f)
+Expression({Expression({Expression({:a,:+,:b}),Expression({:c,:+,:d})}),Expression({:e,:+,:f})})
+
+julia> componify(ex)
+Expression({:a,:c,:e,:+,:a,:c,:f,:+,:a,:d  …  :c,:f,:+,:b,:d,:e,:+,:b,:d,:f})
+
+julia> evaluate((:a+:b)*(:c+:d),[:a=>3,:b=>10,:c=>0.5])
+Expression({13,:d,:+,6.5})
