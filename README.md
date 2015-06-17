@@ -8,4 +8,9 @@ hexwaves.jl: Make plots of arbitrary dimension in a 3D grid with 6 dimensions at
 
 mindfulness.jl: Described [here](http://artai.co/julia/mindfulnessBell.html).
 
-frac.jl: Dig for fractals!
+frac: Dig for fractals!
+
+Other: mostly various quantum physics scripts.
+
+*Note*
+These files are not maintained.
