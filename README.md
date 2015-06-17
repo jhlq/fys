@@ -12,5 +12,5 @@ frac: Dig for fractals!
 
 Other: mostly various quantum physics scripts.
 
-*Note*
+*Note*  
 These files are not maintained.
