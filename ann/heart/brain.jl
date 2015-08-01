@@ -31,15 +31,25 @@ end
 
 function step!(net,exc,loc,canvas)
 	exc[1:end]=atan(net*exc)
-	x=Integer(sign(exc[end-1]))
-	y=Integer(sign(exc[end]))
+	tx,ty=abs(exc[end-1]),abs(exc[end])
+	x,y=0,0
+	if abs(tx-ty)/(tx+ty)>0.5
+		if tx>ty
+			x=Integer(sign(exc[end-1]))
+		else
+			y=Integer(sign(exc[end]))
+		end
+	else
+		x=Integer(sign(exc[end-1]))
+		y=Integer(sign(exc[end]))
+	end
 	h,w=size(canvas)
 	loc[1]=mod(loc[1]+x,w)
 	loc[2]=mod(loc[2]+y,h)
 	canvas[loc[2]+1,loc[1]+1]+=1
 end
 rnet()=rand(9,9)-0.5
-function makedrawing(net=rnet(),steps=300)
+function makedrawing(net=rnet(),steps=90)
 	h=100;w=120
 	canvas=zeros(h,w)
 	neurons=size(net,1)
@@ -61,4 +71,31 @@ function save(net,filename)
 	sn=open(filename,"w") #write append
 	write(sn,"$net")
 	close(sn)
+end
+
+function scoredrawing(drawing)
+	h,w=size(drawing)
+	score=0
+	for hi in 1:h
+		for wi in 1:w
+			if heart[hi,wi]>0 && drawing[hi,wi]>0
+				score+=1
+			end
+		end
+	end
+	return score
+end
+scorenet(net,drawlen=90)=scoredrawing(makedrawing(net,drawlen))
+
+function improvenet(net,drawlen=90,damping=10,maxiter=1000)
+	neurons=size(net,1)
+	score=scorenet(net,drawlen)
+	for it in 1:maxiter
+		newnet=net+(rand(neurons,neurons)-0.5)/damping
+		newscore=scorenet(newnet,drawlen)
+		if newscore>score
+			net=newnet
+		end
+	end
+	return net
 end
