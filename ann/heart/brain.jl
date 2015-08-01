@@ -44,9 +44,11 @@ function step!(net,exc,loc,canvas)
 		y=Integer(sign(exc[end]))
 	end
 	h,w=size(canvas)
-	loc[1]=mod(loc[1]+x,w)
-	loc[2]=mod(loc[2]+y,h)
-	canvas[loc[2]+1,loc[1]+1]+=1
+	t=min(loc[1]+x,w)
+	loc[1]=t==0?1:t
+	t=min(loc[2]+y,h)
+	loc[2]=t==0?1:t
+	canvas[loc[2],loc[1]]+=1
 end
 rnet()=rand(9,9)-0.5
 function makedrawing(net=rnet(),steps=90)
@@ -69,16 +71,28 @@ imagesc(canvas)
 
 function save(net,filename)
 	sn=open(filename,"w") #write append
-	write(sn,"$net")
+	h,w=size(net)
+	for hi in 1:h
+		for wi in 1:w
+			write(sn,"$(net[hi,wi])")
+			if wi!=w
+				write(sn,' ')
+			end
+		end
+		if hi!=h
+			write(sn,'\n')
+		end
+	end
 	close(sn)
 end
+load(filename)=readdlm(filename,' ')
 
 function scoredrawing(drawing)
 	h,w=size(drawing)
 	score=0
 	for hi in 1:h
 		for wi in 1:w
-			if heart[hi,wi]>0 && drawing[hi,wi]>0
+			if heart[hi,wi]==1 && drawing[hi,wi]==1
 				score+=1
 			end
 		end
@@ -94,6 +108,8 @@ function improvenet(net,drawlen=90,damping=10,maxiter=1000)
 		newnet=net+(rand(neurons,neurons)-0.5)/damping
 		newscore=scorenet(newnet,drawlen)
 		if newscore>score
+			print(newscore-score,' ')
+			score=newscore
 			net=newnet
 		end
 	end
