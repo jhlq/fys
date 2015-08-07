@@ -1,6 +1,8 @@
 include("heart.jl")
-heart=drawheart!()
+const heart=drawheart!()
+const heartx,hearty=heartarrays()
 
+#=
 numneurons=9
 net=rand(numneurons,numneurons)-0.5
 exc=zeros(numneurons) #excitations
@@ -11,24 +13,7 @@ h=100
 canvas=zeros(h,w)
 
 loc=Integer[w/2,h]
-
-#=
-
-function sigmoid(x)
-	1/(1+exp(-x))
-end
-function sigmoid(a::Array)
-	for xi in 1:length(a)
-		a[xi]=1/(1+exp(-a[xi]))
-	end
-	return a
-end
-nstep=999
-for st in 1:nstep
-	step!(net,exc,loc,canvas)
-end
 =#
-
 function step!(net,exc,loc,canvas)
 	exc[1:end]=atan(net*exc)
 	tx,ty=abs(exc[end-1]),abs(exc[end])
@@ -87,13 +72,33 @@ function save(net,filename)
 end
 load(filename)=readdlm(filename,' ')
 
-function scoredrawing(drawing)
+function scoredrawing_dep(drawing)
 	h,w=size(drawing)
 	score=0
 	for hi in 1:h
 		for wi in 1:w
 			if heart[hi,wi]==1 && drawing[hi,wi]==1
 				score+=1
+			end
+		end
+	end
+	return score
+end
+function scoredrawing(drawing)
+	score=0
+	for i in 1:length(heartx)
+		x,y=round(Int,heartx[i]),round(Int,hearty[i])
+		brk=false
+		for xi in x-3:x+3
+			for yi in y-3:y+3
+				if drawing[yi,xi]>0
+					score+=1
+					brk=true
+					break
+				end
+			end
+			if brk
+				break
 			end
 		end
 	end

@@ -20,7 +20,7 @@ o=[w/2,h-h/5]
 #iterate over canvas and fill every point within a certain distance from coord
 function drawheart!(canvas=zeros(100,120))
 	h,w=size(canvas)
-	o=[w/2,h-h/5]
+	o=[w/2,h/5]
 	f=x->x
 	a=map(f,1:314)
 	a/=maximum(a)
@@ -28,8 +28,8 @@ function drawheart!(canvas=zeros(100,120))
 	spiralx=Any[o[1]]
 	spiraly=Any[o[2]]
 	for i in 1:length(a)
-		coord=[o[1]+r*a[i]*cos(i/100+pi/2),o[2]+r*a[i]*sin(i/100+pi/2)]
-		coordr=[o[1]+r*a[i]*cos(-i/100+pi/2),o[2]+r*a[i]*sin(-i/100+pi/2)]
+		coord=[o[1]+r*a[i]*cos(i/100-pi/2),o[2]+r*a[i]*sin(i/100-pi/2)]
+		coordr=[o[1]+r*a[i]*cos(-i/100-pi/2),o[2]+r*a[i]*sin(-i/100-pi/2)]
 		push!(spiralx,coord[1],coordr[1])
 		push!(spiraly,coord[2],coordr[2])
 	end
@@ -39,12 +39,30 @@ function drawheart!(canvas=zeros(100,120))
 		for j in 1:w
 			for poind in 1:length(spiralx)
 				if distance([j,i],[spiralx[poind],spiraly[poind]])<5
-					canvas[h-i+1,j]=1
+					canvas[i,j]=1
 				end
 			end
 		end
 	end
 	return canvas
+end
+function heartarrays(h=100,w=120)
+	o=[w/2,h/5]
+	f=x->x
+	a=map(f,1:314)
+	a/=maximum(a)
+	r=h-h/4
+	spiralx=Any[o[1]]
+	spiraly=Any[o[2]]	
+	for i in 1:length(a)
+		coord=[o[1]+r*a[i]*cos(i/100-pi/2),o[2]+r*a[i]*sin(i/100-pi/2)]
+		coordr=[o[1]+r*a[i]*cos(-i/100-pi/2),o[2]+r*a[i]*sin(-i/100-pi/2)]
+		if i%5==0
+			push!(spiralx,coord[1],coordr[1])
+			push!(spiraly,coord[2],coordr[2])
+		end
+	end
+	return spiralx,spiraly
 end
 
 #canvas->iterate each point
