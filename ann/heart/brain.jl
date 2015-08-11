@@ -148,7 +148,7 @@ function improvenet(net,maxiter=1000,damping=10,drawlen=90,right=true)
 	print(score)
 	return net
 end
-function improvenet2(net,maxiter=1000,nmod=3,drawlen=90,right=true)
+function improvenet2(net,maxiter=1000,damping=10,nmod=3,drawlen=90,right=true)
 	neurons=size(net,1)
 	heart=heartarrays()
 	if right
@@ -161,7 +161,7 @@ function improvenet2(net,maxiter=1000,nmod=3,drawlen=90,right=true)
 		newnet=deepcopy(net)
 		for n in 1:nmod
 			r1,r2=mod(rand(Int),neurons)+1,mod(rand(Int),neurons)+1
-			newnet[r1,r2]+=rand()-0.5
+			newnet[r1,r2]+=(rand()-0.5)/damping
 		end
 		newscore=scorenet(newnet,heartx,hearty,drawlen)
 		if newscore>score
