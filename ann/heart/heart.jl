@@ -52,17 +52,25 @@ function heartarrays(h=100,w=120)
 	a=map(f,1:314)
 	a/=maximum(a)
 	r=h-h/4
-	spiralx=Any[o[1]]
-	spiraly=Any[o[2]]	
+	#spiralx=Any[o[1]]
+	#spiraly=Any[o[2]]
+	leftx=FloatingPoint[o[1]]
+	lefty=FloatingPoint[o[2]]
+	rightx=FloatingPoint[o[1]]
+	righty=FloatingPoint[o[2]]
 	for i in 1:length(a)
-		coord=[o[1]+r*a[i]*cos(i/100-pi/2),o[2]+r*a[i]*sin(i/100-pi/2)]
-		coordr=[o[1]+r*a[i]*cos(-i/100-pi/2),o[2]+r*a[i]*sin(-i/100-pi/2)]
+		coordr=[o[1]+r*a[i]*cos(i/100-pi/2),o[2]+r*a[i]*sin(i/100-pi/2)]
+		coordl=[o[1]+r*a[i]*cos(-i/100-pi/2),o[2]+r*a[i]*sin(-i/100-pi/2)]
 		if i%5==0
-			push!(spiralx,coord[1],coordr[1])
-			push!(spiraly,coord[2],coordr[2])
+			#push!(spiralx,coord[1],coordr[1])
+			#push!(spiraly,coord[2],coordr[2])
+			push!(leftx,coordl[1])
+			push!(lefty,coordl[2])
+			push!(rightx,coordr[1])
+			push!(righty,coordr[2])
 		end
 	end
-	return spiralx,spiraly
+	return leftx,lefty,rightx,righty
 end
 
 #canvas->iterate each point
