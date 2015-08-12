@@ -173,3 +173,12 @@ function improvenet2(net,maxiter=1000,damping=10,nmod=3,drawlen=90,right=true)
 	print(score)
 	return net
 end
+function addneuron(net)
+	n=size(net,1)
+	nnet=zeros(n,n)
+	nnet[1,1]=net[1,1]
+	nnet[1,3:end]=net[1,2:end]
+	nnet[3:end,1]=net[2:end,1]
+	nnet[3:end,3:end]=net[2:end,2:end]
+	return nnet
+end
