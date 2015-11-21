@@ -54,10 +54,10 @@ function heartarrays(h=100,w=120)
 	r=h-h/4
 	#spiralx=Any[o[1]]
 	#spiraly=Any[o[2]]
-	leftx=FloatingPoint[o[1]]
-	lefty=FloatingPoint[o[2]]
-	rightx=FloatingPoint[o[1]]
-	righty=FloatingPoint[o[2]]
+	leftx=AbstractFloat[o[1]]
+	lefty=AbstractFloat[o[2]]
+	rightx=AbstractFloat[o[1]]
+	righty=AbstractFloat[o[2]]
 	for i in 1:length(a)
 		coordr=[o[1]+r*a[i]*cos(i/100-pi/2),o[2]+r*a[i]*sin(i/100-pi/2)]
 		coordl=[o[1]+r*a[i]*cos(-i/100-pi/2),o[2]+r*a[i]*sin(-i/100-pi/2)]
