@@ -4,12 +4,16 @@ http = HttpHandler() do req::Request, res::Response
 	println(UTF8String(req.data))
 	if ismatch(r"^/create/",req.resource)
 		t=URIParser.unescape(split(req.resource,'/')[3])
-		println(UTF8String(t))
-		txt=UTF8String(t)
+		#println(UTF8String(t))
+		txt=t#UTF8String(t)
 		f=open("profile.txt","w")
 		write(f,txt)
 		close(f)
 		return Response("Wrote in profile.txt: $txt")
+	elseif ismatch(r"^/wget/",req.resource)
+		#println(`wget $(UTF8String(req.data))`)
+		run(`wget $(UTF8String(req.data))`)
+		Response("wgot")
 	else
 		Response(404)
 	end
