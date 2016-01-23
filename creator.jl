@@ -16,16 +16,17 @@ http = HttpHandler() do req::Request, res::Response
 		run(`wget $(UTF8String(req.data))`)
 		Response("wgot")
 	elseif ismatch(r".txt",req.resource)
+		path=req.resource[2:end]
 		t=split(URIParser.unescape(req.resource),'/')
 		if ismatch(r".txt",t[end-1]) && d==""
 			d=t[end]
 			pop!(t)
+			path=path[1:end-length(d)-1]
 		end
 		if ismatch(r".txt",t[end])
-			path=req.resource[2:end]
 			if ispath(path)
 				if d!=""
-					f=open(path,"a");write(f,d);close(f)
+					f=open(path,"a");write(f,"\n"*d);close(f)
 					return Response("Appended $d")
 				else
 					return Response(readall(path))
