@@ -17,14 +17,23 @@ http = HttpHandler() do req::Request, res::Response
 		Response("wgot")
 	elseif ismatch(r".txt",req.resource)
 		t=split(URIParser.unescape(req.resource),'/')
+		if ismatch(r".txt",t[end-1]) && d==""
+			d=t[end]
+			pop!(t)
+		end
 		if ismatch(r".txt",t[end])
-			if ispath(req.resource)
-				return Response(readall(req.resource))
+			path=req.resource[2:end]
+			if ispath(path)
+				if d!=""
+					f=open(path,"a");write(f,d);close(f)
+					return Response("Appended $d")
+				else
+					return Response(readall(path))
+				end
 			elseif d!=""
-				path=req.resource[2:end]
 				mkpath(splitdir(path)[1])
 				f=open(path,"w");write(f,d);close(f)
-				return Response("Wrote $(req.resource)")
+				return Response("Wrote $path")
 			else
 				return Response(404)
 			end
