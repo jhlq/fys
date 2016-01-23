@@ -1,7 +1,8 @@
 using HttpServer
 
 http = HttpHandler() do req::Request, res::Response
-	println(UTF8String(req.data))
+	d=UTF8String(req.data)
+	println(d)
 	if ismatch(r"^/create/",req.resource)
 		t=URIParser.unescape(split(req.resource,'/')[3])
 		#println(UTF8String(t))
@@ -14,6 +15,21 @@ http = HttpHandler() do req::Request, res::Response
 		#println(`wget $(UTF8String(req.data))`)
 		run(`wget $(UTF8String(req.data))`)
 		Response("wgot")
+	elseif ismatch(r".txt",req.resource)
+		t=split(URIParser.unescape(req.resource),'/')
+		if ismatch(r".txt",t[end])
+			if ispath(req.resource)
+				return Response(readall(req.resource))
+			elseif d!=""
+				path=req.resource[2:end]
+				mkpath(splitdir(path)[1])
+				f=open(path,"w");write(f,d);close(f)
+				return Response("Wrote $(req.resource)")
+			else
+				return Response(404)
+			end
+		end
+				
 	else
 		Response(404)
 	end
