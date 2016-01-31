@@ -12,8 +12,8 @@ end
 wsh = WebSocketHandler() do req, client
     global connections
     @show connections[client.id] = client
-    while true
-        try
+    try
+        while true
             msg = read(client)
             msg = decodeMessage(msg)
             if startswith(msg, "setusername:")
@@ -28,9 +28,9 @@ wsh = WebSocketHandler() do req, client
                     end
                 end
             end
-        catch er
-            println(er)
         end
+    catch er
+        println(er)
     end
 end
 
