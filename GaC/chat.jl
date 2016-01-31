@@ -13,19 +13,23 @@ wsh = WebSocketHandler() do req, client
     global connections
     @show connections[client.id] = client
     while true
-        msg = read(client)
-        msg = decodeMessage(msg)
-        if startswith(msg, "setusername:")
-            println("SETTING USERNAME: $msg")
-            usernames[client.id] = msg[13:end]
-        end
-        if startswith(msg, "say:")
-            println("EMITTING MESSAGE: $msg")
-            for (k,v) in connections
-                if k != client.id
-                    write(v, (usernames[client.id] * ": " * msg[5:end]))
+        try
+            msg = read(client)
+            msg = decodeMessage(msg)
+            if startswith(msg, "setusername:")
+                println("SETTING USERNAME: $msg")
+                usernames[client.id] = msg[13:end]
+            end
+            if startswith(msg, "say:")
+                println("EMITTING MESSAGE: $msg")
+                for (k,v) in connections
+                    if k != client.id
+                        write(v, (usernames[client.id] * ": " * msg[5:end]))
+                    end
                 end
             end
+        catch er
+            println(er)
         end
     end
 end
