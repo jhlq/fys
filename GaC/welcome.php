@@ -13,8 +13,8 @@ $database = new medoo([
 ]);
 $arr=["name" => $_POST["name"],"email"=>$_POST["email"]];
 echo $arr["name"];
-$database->insert("people", $arr);
-echo 'Name and email saved in database';
+$q=$database->insert("people", $arr);
+echo $q;
 ?>
 
 </body>
