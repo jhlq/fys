@@ -5,6 +5,7 @@ Welcome <?php echo $_POST["name"]; ?><br>
 Your email address is: <?php echo $_POST["email"]; ?>
 
 <?php 
+#setup db in sqlite3 with: create table people(name text, email text);
 include_once 'medoo.php';
 $database = new medoo([
 	'database_type' => 'sqlite',
