@@ -17,6 +17,8 @@ socket_listen($socket);
 //create & add listning socket to the list
 $clients = array($socket);
 
+$db = new PDO('sqlite:data/chat1.sqlite');
+
 //start endless loop, so that our script doesn't stop
 while (true) {
 	//manage multipal connections
@@ -53,6 +55,8 @@ while (true) {
 			$user_message = $tst_msg->message; //message text
 			$user_color = $tst_msg->color; //color
 			
+			$db->exec("INSERT INTO messages (user,msg) VALUES ($user_name,$user_message);"
+			
 			//prepare data to be sent to client
 			$response_text = mask(json_encode(array('type'=>'usermsg', 'name'=>$user_name, 'message'=>$user_message, 'color'=>$user_color)));
 			send_message($response_text); //send data
@@ -74,6 +78,7 @@ while (true) {
 }
 // close the listening socket
 socket_close($socket);
+$db = NULL;
 
 function send_message($msg)
 {
