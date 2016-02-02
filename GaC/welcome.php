@@ -8,7 +8,7 @@ Your email address is: <?php echo $_POST["email"]; ?><br>
   try
   {
     //open the database
-    $db = new PDO('sqlite:dogsDb_PDO.sqlite');
+    $db = new PDO('sqlite:data/dogsDb_PDO.sqlite');
 
     //create the database
     $db->exec("CREATE TABLE Dogs (Id INTEGER PRIMARY KEY, Breed TEXT, Name TEXT, Age INTEGER)");    
