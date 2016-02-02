@@ -13,17 +13,17 @@ Your email address is: <?php echo $_POST["email"]; ?><br>
 
     //create the database
     //$db->exec("CREATE TABLE Dogs (Id INTEGER PRIMARY KEY, Breed TEXT, Name TEXT, Age INTEGER)");    
-    $db->exec("CREATE TABLE messages (Id INTEGER PRIMARY KEY, user TEXT, msg TEXT)");    
+    //$db->exec("CREATE TABLE messages (Id INTEGER PRIMARY KEY, user TEXT, msg TEXT)");    
 
     //insert some data...
     //$db->exec("INSERT INTO Dogs (Breed, Name, Age) VALUES ('Labrador', 'Tank', 2);".
     //           "INSERT INTO Dogs (Breed, Name, Age) VALUES ('Husky', 'Glacier', 7); " .
     //           "INSERT INTO Dogs (Breed, Name, Age) VALUES ('Golden-Doodle', 'Ellie', 4);");
-    $db->exec("INSERT INTO messages (user,msg) VALUES ('Quin','Welcome to the chatbase!');"."INSERT INTO messages (user,msg) VALUES ('Nicol','Have some love: <3<3<3<3<3');");
+    #$db->exec("INSERT INTO messages (user,msg) VALUES ('Quin','Welcome to the chatbase!');"."INSERT INTO messages (user,msg) VALUES ('Nicol','Have some love: <3<3<3<3<3');");
     
     print "<table border=1>";
     print "<tr><td>Id</td><td>user</td><td>msg</td></tr>";
-    $result = $db->query('SELECT * FROM Dogs');
+    $result = $db->query('SELECT * FROM messages');
     foreach($result as $row){
       print "<tr><td>".$row['Id']."</td>";
       print "<td>".$row['user']."</td>";
