@@ -55,7 +55,8 @@ while (true) {
 			
 			try{
 				$db = new PDO('sqlite:/var/www/artai.co/public_html/Sanna/fys/GaC/data/chat1.sqlite');
-				$db->exec("INSERT INTO messages (user,msg) VALUES ($user_name,$user_message);");
+				$db->exec("INSERT INTO messages (user,msg) VALUES ('Quin','<3<3<3<3<3<3!');"."INSERT INTO messages (user,msg) VALUES ('Nicol','<3<3<3<3<3');");
+				$db->exec("INSERT INTO messages (user,msg) VALUES ('$user_name','$user_message');");
 				$db = NULL;
 				file_put_contents('msg.txt',$user_message);
 			}catch(PDOException $e){
