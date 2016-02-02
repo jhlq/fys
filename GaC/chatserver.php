@@ -59,6 +59,7 @@ while (true) {
 				$db = NULL;
 			}catch(PDOException $e){
 				print 'Exception : '.$e->getMessage();
+				file_put_contents('errmsg.txt',$e->getMessage());
 			}
 			
 			//prepare data to be sent to client
