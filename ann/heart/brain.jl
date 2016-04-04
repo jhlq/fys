@@ -272,7 +272,7 @@ function newnet(right=true)
 	end =#
 	net
 end
-function train(net,stops=[(60,21),(75,27),(90,36)],right=true,newneuronit=9000,maxneur=150) #[(115,45),(120,50)]
+function train(net,stops=[(60,21),(75,27),(90,36)],right=true,newneuronit=900,maxneur=30) #[(115,45),(120,50)]
 	nstops=length(stops)
 	for sto in 1:nstops
 		dl=stops[sto][1]
@@ -299,4 +299,10 @@ function train(net,stops=[(60,21),(75,27),(90,36)],right=true,newneuronit=9000,m
 		end
 	end
 	net
+end
+
+function m()
+	rnet=newnet()
+	@time rnet=train(rnet)
+	return rnet,makedrawing(rnet)
 end
