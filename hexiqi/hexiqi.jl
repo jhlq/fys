@@ -1,9 +1,23 @@
+#module Hexiqi
+
 storage=Dict()
-storage[:players]=[(1,0,0),(0,1,0)]
+storage[:players]=[(1,0,0),(0,1,0),(0,0,1)]
 storage[:player]=1
+storage[:lock]=false
+lock=()->storage[:lock]=!storage[:lock]
+storage[:np]=2 #numplayers
+np=(n)->storage[:np]=n
 storage[:layers]=5
 storage[:window]=(900,700)
 storage[:size]=storage[:window][2]/(storage[:layers]*3)
+storage[:sequence]=Array{Tuple,1}()
+storage[:delete]=false
+delete=()->storage[:delete]=!storage[:delete]
+
+using Gtk, Graphics
+c = @GtkCanvas()
+win = GtkWindow(c, "Hexiqi",storage[:window][1],storage[:window][2])
+#storage[:ctx]=getgc(c)
 
 function makegrid(layers=3)
 	grid=Set{Tuple}()
@@ -27,7 +41,7 @@ function makegrid(layers=3)
 	return grid
 end
 storage[:grid]=makegrid(storage[:layers])
-storage[:map]=Dict((0,0,0)=>0)
+storage[:map]=Dict((0,0,2)=>0)
 for loc in storage[:grid]
 	storage[:map][loc]=0
 end
@@ -45,10 +59,6 @@ function pixel_to_hex(x, y, size=storage[:size])
     return (q, r)
 end
 
-using Gtk, Graphics
-c = @GtkCanvas()
-win = GtkWindow(c, "Hexiqi",storage[:window][1],storage[:window][2])
-
 function triangle(ctx,x,y,size,up=-1)
 	polygon(ctx, [Point(x,y),Point(x+size,y),Point(x+size/2,y+up*size)])
 	fill(ctx)
@@ -65,6 +75,9 @@ function hexlines(ctx,x,y,size)
 end
 function drawboard(ctx,w,h)
 	size=storage[:size]
+	rectangle(ctx, 0, 0, w, h)
+	set_source_rgb(ctx, 1, 1, 1)
+	fill(ctx)
 	set_source_rgb(ctx, 0,0,0)
 	for loc in storage[:grid]
 		if loc[3]==2
@@ -87,6 +100,132 @@ function drawboard(ctx,w,h)
 			fill(ctx)
 		end
 	end
+	set_source_rgb(ctx, storage[:players][storage[:player]]...)
+	arc(ctx, size, size, size/3, 0, 2pi)
+	fill(ctx)
+end
+function resetmap()
+	for loc in storage[:grid]
+		storage[:map][loc]=0
+	end
+	#drawboard()
+	#reveal(c,true)
+end
+
+function adjacent(hex)
+	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
+	if hex[3]==1
+		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(-1,0,1),(-1,1,1)]
+	elseif hex[3]==3
+		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0),(0,0,-1),(-1,0,-1),(0,-1,-1)]
+	end
+	adj=Array{Tuple,1}()
+	for c in connections
+		x,y,z=hex
+		x+=c[1];y+=c[2];z+=c[3]
+		push!(adj,(x,y,z))
+	end
+	return adj
+end
+function getgroup(hex)
+	player=storage[:map][hex]
+	if player==0
+		return []
+	end
+	group=Tuple[hex]
+	temp=[hex]
+	while !isempty(temp)
+		temp2=Tuple[]
+		for t in temp
+			for h in adjacent(t)
+				if !in(h,group) && !in(h,temp) && !in(h,temp2) && in(h,keys(storage[:map])) && storage[:map][h]==player
+					push!(temp2,h)
+				end
+			end
+		end
+		for t2 in temp2
+			push!(group,t2)
+		end
+		temp=temp2
+	end
+	return group
+end
+function liberties(group)
+	if isempty(group)
+		return 1
+	end
+	checked=Tuple[]
+	libs=0
+	for hex in group
+		for h in adjacent(hex)
+			if !in(h,group) && !in(h,checked) && in(h,keys(storage[:map]))
+				if storage[:map][h]==0
+					libs+=1
+				end
+				push!(checked,h)
+			end
+		end
+	end
+	return libs
+end
+
+function score()
+	claims=Dict()
+	for player in 1:storage[:np]
+		checked=Tuple[]
+		for hexp in storage[:map]
+			hex,p=hexp
+			if p==player
+				if in(hex,keys(claims)) 
+					if claims[hex][p]<1
+						claims[hex][p]=1.0
+					end
+				else
+					a=zeros(storage[:np])
+					a[p]=1.0
+					claims[hex]=a
+				end
+				for ahex in adjacent(hex)
+					if !in(ahex,checked) && in(ahex,storage[:grid])
+						if in(ahex,keys(claims)) 
+							if claims[ahex][p]<0.5
+								claims[ahex][p]=0.5
+							end
+						else
+							a=zeros(storage[:np])
+							a[p]=0.5
+							claims[ahex]=a
+						end
+					end
+				end
+				push!(checked,hex)
+			end
+		end
+	end
+	scores=zeros(storage[:np])
+	for hexa in claims
+		hex,a=hexa
+		m=maximum(a)
+		inds=findin(a,m)
+		l=length(inds)
+		for p in inds
+			scores[p]+=1/l #add complementary harvesting, two 0.5 claims don't conflict since one can't harvest all
+		end #subtract 0.001 per unit
+	end
+	maxpoints=length(storage[:map])
+	return scores,maxpoints
+end
+function undo() #wont undo captures
+	hex=pop!(storage[:sequence])
+	storage[:map][hex]=0
+	storage[:player]=storage[:player]-1
+	if storage[:player]<1
+		storage[:player]=storage[:np]
+	end
+	return hex
+end
+function pass()
+	storage[:player]=storage[:player]%storage[:np]+1
 end
 @guarded draw(c) do widget
     ctx = getgc(c)
@@ -94,23 +233,7 @@ end
     w = width(c)
 	storage[:window]=(w,h)
 	storage[:size]=storage[:window][2]/(storage[:layers]*3)
-    # Paint red rectangle
-    #rectangle(ctx, 0, 0, w, h/2)
-    #set_source_rgb(ctx, 1, 0, 0)
-    #fill(ctx)
-    # Paint blue rectangle
-    rectangle(ctx, 0, 3h/4, w, h/4)
-    set_source_rgb(ctx, 0, 0, 1)
-    fill(ctx)
-#	polygon(ctx, [Point(50,100),Point(100,100),Point(75,100-50sin(pi/3))])
-#	set_source_rgb(ctx, 0.9, 0.6, 0.7)
-#	fill(ctx)
-#	triangle(ctx,150,200,30)
-#	triangle(ctx,150,200,30,1)
-#	set_source_rgb(ctx, 1, 0, 0)
-#	move_to(ctx,70,70)
-#	rel_line_to(ctx,15,15)
-#	stroke(ctx)
+    
 	set_source_rgb(ctx,0,0,0)
 	size=storage[:size]
 #	x,y=hex_to_pixel(1,2,size)
@@ -130,10 +253,6 @@ end
 
 c.mouse.button1press = @guarded (widget, event) -> begin
     ctx = getgc(widget)
-    #set_source_rgb(ctx, 0, 1, 0)
-#	set_source_rgb(ctx, storage[:players][storage[:player]]...)
-#    arc(ctx, event.x, event.y, 5, 0, 2pi)
-#    stroke(ctx)
 
 	h = height(c)
 	w = width(c)
@@ -146,9 +265,29 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 	downdiff=abs(round(qdown)-qdown)+abs(round(rdown)-rdown)
 	best=findmin([maindiff,updiff,downdiff])[2]
 	hex=[(round(Int,q),round(Int,r),2),(round(Int,qup),round(Int,rup),3),(round(Int,qdown),round(Int,rdown),1)][best]
-	if in(hex,keys(storage[:map])) && storage[:map][hex]==0
-		storage[:map][hex]=storage[:player]
-		storage[:player]=storage[:player]%length(storage[:players])+1
+	exists=in(hex,keys(storage[:map]))
+	if exists
+		if storage[:delete]==true && storage[:map][hex]!=0
+			storage[:map][hex]=0
+		elseif storage[:map][hex]==0
+			storage[:map][hex]=storage[:player]
+			push!(storage[:sequence],hex)
+			hs=adjacent(hex)
+			push!(hs,hex)
+			for he in hs
+				if in(he,keys(storage[:map]))
+					g=getgroup(he)
+					if !isempty(g) && liberties(g)==0
+						for gh in g
+							storage[:map][gh]=0
+						end
+					end
+				end
+			end
+			if !storage[:lock]
+				storage[:player]=storage[:player]%storage[:np]+1
+			end
+		end
 	end
 #	println((event.x-w/2,event.y-h/2),',',["main","up","down"][best])
 	drawboard(ctx,w,h)
@@ -156,3 +295,5 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 	
 end
 show(c)
+
+#end
