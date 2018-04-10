@@ -173,10 +173,9 @@ function connections()
 	nc=0
 	connectivity=storage[:connectivity]
 	for (loc,col) in storage[:map]
-		if col>0
-			for c in connectivity
-				nl=(loc[1]+c[1],loc[2]+c[2],loc[3]+c[3])
-				ac=storage[:map][nl]
+		if col>0 
+			for c in adjacent(loc)
+				ac=storage[:map][c]
 				if ac!=0 && ac!=col
 					nc+=1
 				end
