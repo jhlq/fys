@@ -1,0 +1,33 @@
+text based setup -> start game screen
+	num players, board size, num white units, white unit spacing, scoring rules
+	terrain -> seasons
+zoom
+	click white unit (also for spawning?)
+scoring
+	connections
+		check only ground level?
+	connecting white units
+	harvesting, store in white units
+	manual editing
+	influence, check if surrounded
+	many kinds of points
+		surrounded by G and B -> GB points
+		doubly surrounded -> ? maybe filter out rgb from RGB, Rgb->Rb->R or Rrb->Rb->R
+		top/bottom surrounded
+		white helps
+	R eats from G who eats from B who eats from R
+	R emits r
+units
+	free unit that generates 1 point per turn from where it is placed
+	units that can jump from where it is spawned
+	cost rules, arbitrary harvesting, up(down)grading
+	combine colored points to harvest multiple colors
+	movable units, programmable
+	tunnel/bridge units, 3/9 times cost?
+	solar harvester
+		made from G harvests green points, upgrade with RB
+database
+	changes
+	location
+		terrain, units, misc
+		type Loc?
