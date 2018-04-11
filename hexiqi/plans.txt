@@ -17,6 +17,7 @@ scoring
 		white helps
 	R eats from G who eats from B who eats from R
 	R emits r
+	surrounded points in a layer
 units
 	free unit that generates 1 point per turn from where it is placed
 	units that can jump from where it is spawned
@@ -31,3 +32,13 @@ database
 	location
 		terrain, units, misc
 		type Loc?
+
+
+How about letting players move simultaneously and let their moves be in superpositions? Either resolved randomly where players may lay extra potential moves or by playing another game on the contested location.
+Keep count on how many times each player has begun. No official komi, no official winner
+Material is created with shapes they are surrounded to
+Units emit pointgas so balance in colored units provide optimal gaspoints
+type Game, save(game)
+make borders on units so white doesnt disappear
+
+Why doesnt in work for keys?

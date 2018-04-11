@@ -1,11 +1,11 @@
 #module Hexiqi
 
 storage=Dict()
-storage[:players]=[(1,0,0),(0,1,0),(0,0,1)]
+storage[:players]=[(1,0,0),(0,1,0),(0,0,1),(1,1,1)]
 storage[:player]=1
 storage[:lock]=false
 lock=()->storage[:lock]=!storage[:lock]
-storage[:np]=2 #numplayers
+storage[:np]=3 #numplayers
 np=(n)->storage[:np]=n
 storage[:layers]=5
 storage[:window]=(900,700)
@@ -113,20 +113,42 @@ function resetmap()
 	#reveal(c,true)
 end
 
-function adjacent(hex)
+function adjacent(hex,spacing=1,layer=false)
 	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
+	if layer
+		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0)]
+	end
 	if hex[3]==1
-		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(-1,0,1),(-1,1,1)]
+		if layer
+			connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0)]
+		else
+			connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(-1,0,1),(-1,1,1)]
+		end
 	elseif hex[3]==3
-		connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0),(0,0,-1),(-1,0,-1),(0,-1,-1)]
+		if layer
+			connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0)]
+		else
+			connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0),(0,0,-1),(-1,0,-1),(0,-1,-1)]
+		end
 	end
 	adj=Array{Tuple,1}()
 	for c in connections
 		x,y,z=hex
-		x+=c[1];y+=c[2];z+=c[3]
+		x+=spacing*c[1];y+=spacing*c[2];z+=spacing*c[3]
 		push!(adj,(x,y,z))
 	end
 	return adj
+end
+function placewhite(spacing::Integer)
+	ori=(0,0,2)
+	white=length(storage[:players])
+	storage[:map][ori]=white
+	placed=[ori]
+	adj=adjacent(ori,spacing,true)
+	for ad in adj
+		storage[:map][ad]=white
+		push!(placed,ad)
+	end
 end
 function getgroup(hex)
 	player=storage[:map][hex]
@@ -171,20 +193,46 @@ function liberties(group)
 end
 function connections()
 	nc=0
-	connectivity=storage[:connectivity]
 	for (loc,col) in storage[:map]
 		if col>0 
 			for c in adjacent(loc)
-				ac=storage[:map][c]
-				if ac!=0 && ac!=col
-					nc+=1
+				if in(c,keys(storage[:map]))
+					ac=storage[:map][c]
+					if ac!=0 && ac!=col
+						nc+=1
+					end
 				end
 			end
 		end
 	end
 	return nc/2
 end
+function surrounded(layer::Integer)
+	checked=[(0,0,2)]
+	points=Dict()
+	for (loc,col) in storage[:map]
+		if col==0
+			if !in(loc,checked)
+				push!(checked,loc)
+				locs=[loc]
+				check=adjacent(loc)
+				while !empty(check)
+					ncheck=Array{Tuple,1}()
+					for ch in check
+						col=storage[:map][ch]
+						if col==0
 
+						end
+					end
+				end
+			end
+		end
+	end
+end
+
+function harvest()
+
+end
 function score()
 	claims=Dict()
 	for player in 1:storage[:np]
