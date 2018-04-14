@@ -40,5 +40,9 @@ Material is created with shapes they are surrounded to
 Units emit pointgas so balance in colored units provide optimal gaspoints
 type Game, save(game)
 make borders on units so white doesnt disappear
-
-Why doesnt in work for keys?
+Units decay, white unit can auto repair.
+Placing units further from the white costs more.
+Choosing an arbitrary color and connecting to the center is like creating an account for that spot.
+Get group should include white, then checking for white connection is trivial
+White units are storage for points and charging them becomes harder and harder, so by making roads one can distribute the points over many white points making it easier to gain points
+Harvesting gains points, bonds multiply points

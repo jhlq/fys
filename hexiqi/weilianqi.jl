@@ -7,24 +7,31 @@ storage[:lock]=false
 lock=()->storage[:lock]=!storage[:lock]
 storage[:np]=3 #numplayers
 np=(n)->storage[:np]=n
-storage[:layers]=5
+storage[:layers]=6 #shells
 storage[:window]=(900,700)
 storage[:size]=storage[:window][2]/(storage[:layers]*3)
 storage[:sequence]=Array{Tuple,1}()
 storage[:delete]=false
 delete=()->storage[:delete]=!storage[:delete]
-storage[:connectivity]=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
+#storage[:connectivity]=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
+storage[:spacing]=7
+storage[:onlylayer]=2 #disable hi/lo moves, 0 to disable the disabling.
+saveseq=()->write("saves/save$(round(Integer,time())).txt","$(storage[:sequence])")
+loadseq=(filename)->storage[:sequence]=eval(parse(read(filename,String)))
+
+backgroundcolor=[0,0,0]
+gridcolor=[1,1,1]
 
 using Gtk, Graphics
 c = @GtkCanvas()
-win = GtkWindow(c, "Hexiqi",storage[:window][1],storage[:window][2])
+win = GtkWindow(c, "Weilianqi",storage[:window][1],storage[:window][2])
 #storage[:ctx]=getgc(c)
 
 function makegrid(layers=3)
 	grid=Set{Tuple}()
 	push!(grid,(0,0,2))
 	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
-	for layer in 2:layers
+	for layer in 1:layers
 		tgrid=Array{Tuple,1}()
 		for loc in grid
 			if loc[3]==2
@@ -47,7 +54,7 @@ for loc in storage[:grid]
 	storage[:map][loc]=0
 end
 
-g=makegrid(3)
+g=makegrid(2)
 @assert length(g)==43
 function hex_to_pixel(q,r,size=storage[:size])
     x = size * sqrt(3) * (q + r/2)
@@ -77,16 +84,19 @@ end
 function drawboard(ctx,w,h)
 	size=storage[:size]
 	rectangle(ctx, 0, 0, w, h)
-	set_source_rgb(ctx, 1, 1, 1)
+	set_source_rgb(ctx, backgroundcolor...)
 	fill(ctx)
-	set_source_rgb(ctx, 0,0,0)
+	set_source_rgb(ctx, storage[:players][storage[:player]]...)
+	arc(ctx, size, size, 3size, 0, 2pi)
+	fill(ctx)
+	set_source_rgb(ctx, gridcolor...)
 	for loc in storage[:grid]
 		if loc[3]==2
 			x,y=hex_to_pixel(loc[1],loc[2],size)
 			hexlines(ctx,x+w/2,y+h/2,size)
 		end
 	end
-	for move in storage[:map]
+	for move in storage[:sequence]
 		if move[2]>0
 			set_source_rgb(ctx, storage[:players][move[2]]...)
 			offset=(0,0)
@@ -99,11 +109,11 @@ function drawboard(ctx,w,h)
 			#println(loc)
 			arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
 			fill(ctx)
+			set_source_rgb(ctx,gridcolor...)
+			arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
+			stroke(ctx)
 		end
 	end
-	set_source_rgb(ctx, storage[:players][storage[:player]]...)
-	arc(ctx, size, size, size/3, 0, 2pi)
-	fill(ctx)
 end
 function resetmap()
 	for loc in storage[:grid]
@@ -139,19 +149,22 @@ function adjacent(hex,spacing=1,layer=false)
 	end
 	return adj
 end
-function placewhite(spacing::Integer)
-	ori=(0,0,2)
+function placewhite(spacing::Integer,ori=(0,0,2))
 	white=length(storage[:players])
+	if !haskey(storage[:map],ori) || storage[:map][ori]==white
+		return
+	end
 	storage[:map][ori]=white
-	placed=[ori]
+	push!(storage[:sequence],(ori,white))
 	adj=adjacent(ori,spacing,true)
 	for ad in adj
-		storage[:map][ad]=white
-		push!(placed,ad)
+		placewhite(spacing,ad)
 	end
 end
+placewhite(storage[:spacing]) #<---- so out of place
 function getgroup(hex)
 	player=storage[:map][hex]
+	white=length(storage[:players])
 	if player==0
 		return []
 	end
@@ -161,7 +174,7 @@ function getgroup(hex)
 		temp2=Tuple[]
 		for t in temp
 			for h in adjacent(t)
-				if !in(h,group) && !in(h,temp) && !in(h,temp2) && in(h,keys(storage[:map])) && storage[:map][h]==player
+				if !in(h,group) && !in(h,temp) && !in(h,temp2) && in(h,keys(storage[:map])) && (storage[:map][h]==player || storage[:map][h]==white)
 					push!(temp2,h)
 				end
 			end
@@ -206,6 +219,19 @@ function connections()
 		end
 	end
 	return nc/2
+end
+function freelocs(layer=2)
+	free=0
+	tot=0
+	for (loc,col) in storage[:map]
+		if loc[3]==layer
+			tot+=1
+			if col==0
+				free+=1
+			end
+		end
+	end
+	return (free,tot)
 end
 function surrounded(layer::Integer)
 	checked=[(0,0,2)]
@@ -296,7 +322,7 @@ end
     h = height(c)
     w = width(c)
 	storage[:window]=(w,h)
-	storage[:size]=storage[:window][2]/(storage[:layers]*3)
+	storage[:size]=storage[:window][2]/(storage[:layers]*3.5)
     
 	set_source_rgb(ctx,0,0,0)
 	size=storage[:size]
@@ -329,27 +355,29 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 	downdiff=abs(round(qdown)-qdown)+abs(round(rdown)-rdown)
 	best=findmin([maindiff,updiff,downdiff])[2]
 	hex=[(round(Int,q),round(Int,r),2),(round(Int,qup),round(Int,rup),3),(round(Int,qdown),round(Int,rdown),1)][best]
-	exists=in(hex,keys(storage[:map]))
-	if exists
-		if storage[:delete]==true && storage[:map][hex]!=0
-			storage[:map][hex]=0
-		elseif storage[:map][hex]==0
-			storage[:map][hex]=storage[:player]
-			push!(storage[:sequence],hex)
-			hs=adjacent(hex)
-			push!(hs,hex)
-			for he in hs
-				if in(he,keys(storage[:map]))
-					g=getgroup(he)
-					if !isempty(g) && liberties(g)==0
-						for gh in g
-							storage[:map][gh]=0
+	if storage[:onlylayer]==0 || storage[:onlylayer]==hex[3]
+		exists=in(hex,keys(storage[:map]))
+		if exists
+			if storage[:delete]==true && storage[:map][hex]!=0
+				storage[:map][hex]=0
+			elseif storage[:map][hex]==0
+				storage[:map][hex]=storage[:player]
+				push!(storage[:sequence],(hex,storage[:player]))
+				hs=adjacent(hex)
+				push!(hs,hex)
+				for he in hs
+					if in(he,keys(storage[:map]))
+						g=getgroup(he)
+						if !isempty(g) && liberties(g)==0
+							for gh in g
+								storage[:map][gh]=0
+							end
 						end
 					end
 				end
-			end
-			if !storage[:lock]
-				storage[:player]=storage[:player]%storage[:np]+1
+				if !storage[:lock]
+					storage[:player]=storage[:player]%storage[:np]+1
+				end
 			end
 		end
 	end
