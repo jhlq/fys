@@ -255,6 +255,41 @@ function surrounded(layer::Integer)
 		end
 	end
 end
+function influence(hex,radius=3,layer=true,passover=false,passoverself=false,inclusive=true)
+	player=storage[:map][hex]
+	white=length(storage[:players])
+#	if player==0
+#		return []
+#	end
+	group=Tuple[(hex,6)]
+	temp=[hex]
+#	while !isempty(temp)
+	for rad in 1:radius
+		temp2=Tuple[]
+		for t in temp
+			for h in adjacent(t,1,layer)
+				if !in(h,group) && !in(h,temp) && !in(h,temp2) && in(h,keys(storage[:map])) #&& (storage[:map][h]==player || storage[:map][h]==white)
+					ht=(h,1/rad)
+					if storage[:map][h]==0
+						push!(temp2,ht)
+					elseif passoverself && (storage[:map][h]==player || storage[:map][h]==white)
+						push!(temp2,ht)
+					elseif passover && storage[:map][h]!=0
+						push!(temp2,ht)
+					end
+					if inclusive && storage[:map][h]!=0 && !in(h,temp2)
+						push!(group,ht)
+					end
+				end
+			end
+		end
+		for t2 in temp2
+			push!(group,t2)
+		end
+		temp=temp2
+	end
+	return group
+end
 
 function harvest()
 

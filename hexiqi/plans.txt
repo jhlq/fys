@@ -40,8 +40,8 @@ Material is created with shapes they are surrounded to
 Units emit pointgas so balance in colored units provide optimal gaspoints
 type Game, save(game)
 make borders on units so white doesnt disappear
-Units decay, white unit can auto repair.
-Placing units further from the white costs more.
+Units decay, white unit can auto repair. Units not connected to white decay
+Placing units further from the white costs more. Or how about letting the distance one can place at increase as more points are gathered. Charge level on white unit also determines rate of placement
 Choosing an arbitrary color and connecting to the center is like creating an account for that spot.
 Get group should include white, then checking for white connection is trivial
 White units are storage for points and charging them becomes harder and harder, so by making roads one can distribute the points over many white points making it easier to gain points
