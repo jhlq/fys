@@ -16,6 +16,7 @@ delete=()->storage[:delete]=!storage[:delete]
 #storage[:connectivity]=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
 storage[:spacing]=7
 storage[:onlylayer]=2 #disable hi/lo moves, 0 to disable the disabling.
+storage[:printscore]=true
 saveseq=()->write("saves/save$(round(Integer,time())).txt","$(storage[:sequence])")
 function loadseq(filename)
 	storage[:sequence]=eval(parse(read(filename,String)))
@@ -313,15 +314,29 @@ function allinfluence(radius=3,layer=2)
 	end
 	return influencemap
 end
-function harvest(radius=3)
-	influencemap=allinfluence(radius)
-	rgb=[0.0,0,0]
-	for (iloc,inf) in influencemap
-		for c in 1:3
-			rgb[c]+=min(inf[c],inf[c%3+1])
+function numcolors(rgb)
+	nc=0
+	for c in rgb
+		if c>0
+			nc+=1
 		end
 	end
-	return rgb
+	return nc
+end
+function harvest(radius=3)
+	influencemap=allinfluence(radius)
+	brgbt=[0.0,0,0,0,0]
+	for (iloc,inf) in influencemap
+		if numcolors(inf)==1
+			brgbt[1]+=min(sum(inf),1)
+		else
+			for c in 1:3
+				brgbt[c+1]+=min(inf[c],inf[c%3+1])
+			end
+		end
+	end
+	brgbt[5]=sum(brgbt)
+	return brgbt
 end
 function score()
 	claims=Dict()
@@ -371,7 +386,7 @@ function score()
 end
 function undo() #wont undo captures
 	hex=pop!(storage[:sequence])
-	storage[:map][hex]=0
+	storage[:map][hex[1]]=0
 	storage[:player]=storage[:player]-1
 	if storage[:player]<1
 		storage[:player]=storage[:np]
@@ -449,7 +464,10 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 #	println((event.x-w/2,event.y-h/2),',',["main","up","down"][best])
 	drawboard(ctx,w,h)
 	reveal(widget)
-	
+	if storage[:printscore]
+		harv=round.(harvest(),3,10)
+		println("Black: ",harv[1]," Red: ",harv[2]," Green: ",harv[3]," Blue: ",harv[4]," Total: ",harv[5])
+	end
 end
 show(c)
 
