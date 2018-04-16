@@ -17,7 +17,12 @@ delete=()->storage[:delete]=!storage[:delete]
 storage[:spacing]=7
 storage[:onlylayer]=2 #disable hi/lo moves, 0 to disable the disabling.
 saveseq=()->write("saves/save$(round(Integer,time())).txt","$(storage[:sequence])")
-loadseq=(filename)->storage[:sequence]=eval(parse(read(filename,String)))
+function loadseq(filename)
+	storage[:sequence]=eval(parse(read(filename,String)))
+	for move in storage[:sequence]
+		storage[:map][move[1]]=move[2]
+	end
+end
 
 backgroundcolor=[0,0,0]
 gridcolor=[1,1,1]
@@ -96,7 +101,7 @@ function drawboard(ctx,w,h)
 			hexlines(ctx,x+w/2,y+h/2,size)
 		end
 	end
-	for move in storage[:sequence]
+	for move in storage[:map]
 		if move[2]>0
 			set_source_rgb(ctx, storage[:players][move[2]]...)
 			offset=(0,0)
@@ -261,38 +266,62 @@ function influence(hex,radius=3,layer=true,passover=false,passoverself=false,inc
 #	if player==0
 #		return []
 #	end
-	group=Tuple[(hex,6)]
-	temp=[hex]
+	group=Dict(hex=>6.0)
+	temp=Dict(hex=>6.0)
 #	while !isempty(temp)
 	for rad in 1:radius
-		temp2=Tuple[]
+		temp2=Dict()
 		for t in temp
-			for h in adjacent(t,1,layer)
-				if !in(h,group) && !in(h,temp) && !in(h,temp2) && in(h,keys(storage[:map])) #&& (storage[:map][h]==player || storage[:map][h]==white)
-					ht=(h,1/rad)
+			for h in adjacent(t[1],1,layer)
+				if !in(h,keys(group)) && !in(h,keys(temp)) && !in(h,keys(temp2)) && in(h,keys(storage[:map])) #&& (storage[:map][h]==player || storage[:map][h]==white)
+					inf=1/rad
 					if storage[:map][h]==0
-						push!(temp2,ht)
+						temp2[h]=inf
 					elseif passoverself && (storage[:map][h]==player || storage[:map][h]==white)
-						push!(temp2,ht)
+						temp2[h]=inf
 					elseif passover && storage[:map][h]!=0
-						push!(temp2,ht)
+						temp2[h]=inf
 					end
-					if inclusive && storage[:map][h]!=0 && !in(h,temp2)
-						push!(group,ht)
+					if inclusive && storage[:map][h]!=0 && !in(h,keys(temp2))
+						group[h]=inf
 					end
 				end
 			end
 		end
-		for t2 in temp2
-			push!(group,t2)
+		for (h2,i2) in temp2
+			group[h2]=i2
 		end
 		temp=temp2
 	end
 	return group
 end
-
-function harvest()
-
+function allinfluence(radius=3,layer=2)
+	influencemap=Dict()
+	for (loc,player) in storage[:map]
+		if loc[3]==layer
+			influencemap[loc]=[0.0,0,0]
+		end
+	end
+	for (loc,player) in storage[:map]
+		if player!=0
+			col=storage[:players][player]
+			infl=influence(loc,radius)
+			for inf in infl
+				influencemap[inf[1]].+=inf[2].*col
+			end
+		end
+	end
+	return influencemap
+end
+function harvest(radius=3)
+	influencemap=allinfluence(radius)
+	rgb=[0.0,0,0]
+	for (iloc,inf) in influencemap
+		for c in 1:3
+			rgb[c]+=min(inf[c],inf[c%3+1])
+		end
+	end
+	return rgb
 end
 function score()
 	claims=Dict()
@@ -395,6 +424,7 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 		if exists
 			if storage[:delete]==true && storage[:map][hex]!=0
 				storage[:map][hex]=0
+				push!(storage[:sequence],(hex,0))
 			elseif storage[:map][hex]==0
 				storage[:map][hex]=storage[:player]
 				push!(storage[:sequence],(hex,storage[:player]))
