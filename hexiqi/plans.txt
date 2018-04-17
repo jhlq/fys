@@ -48,3 +48,5 @@ White units are storage for points and charging them becomes harder and harder, 
 Harvesting gains points, bonds multiply points
 Influence majority determines paths
 white points: [1,3,2]=>[0,2,1]+1wp
+highways of mixed color can transport each color less but combined more
+a point cost per distance influence & 1 point cost per distance moved

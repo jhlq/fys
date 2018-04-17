@@ -7,21 +7,24 @@ storage[:lock]=false
 lock=()->storage[:lock]=!storage[:lock]
 storage[:np]=3 #numplayers
 np=(n)->storage[:np]=n
-storage[:layers]=6 #shells
+storage[:layers]=9 #shells
 storage[:window]=(900,700)
-storage[:size]=storage[:window][2]/(storage[:layers]*3)
+storage[:sizemod]=9
+storage[:size]=storage[:window][2]/(storage[:layers]*storage[:sizemod]) #overwritten by draw
+storage[:offsetx]=0
+storage[:offsety]=0
 storage[:sequence]=Array{Tuple,1}()
 storage[:delete]=false
 delete=()->storage[:delete]=!storage[:delete]
 #storage[:connectivity]=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
-storage[:spacing]=7
+storage[:spacing]=10
 storage[:onlylayer]=2 #disable hi/lo moves, 0 to disable the disabling.
 storage[:printscore]=true
-saveseq=()->write("saves/save$(round(Integer,time())).txt","$(storage[:sequence])")
-function loadseq(filename)
-	storage[:sequence]=eval(parse(read(filename,String)))
+saveseq=()->write("saves/$(round(Integer,time())).txt","$(storage[:sequence])")
+function loadseq(filename,originoffset=(0,0,0))
+	push!(storage[:sequence],eval(parse(read("saves/"*filename,String))))
 	for move in storage[:sequence]
-		storage[:map][move[1]]=move[2]
+		storage[:map][move[1].+originoffset]=move[2]
 	end
 end
 
@@ -33,9 +36,9 @@ c = @GtkCanvas()
 win = GtkWindow(c, "Weilianqi",storage[:window][1],storage[:window][2])
 #storage[:ctx]=getgc(c)
 
-function makegrid(layers=3)
+function makegrid(layers=3,startlocs=[(0,0,2)])
 	grid=Set{Tuple}()
-	push!(grid,(0,0,2))
+	push!(grid,startlocs...)
 	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
 	for layer in 1:layers
 		tgrid=Array{Tuple,1}()
@@ -54,81 +57,6 @@ function makegrid(layers=3)
 	end
 	return grid
 end
-storage[:grid]=makegrid(storage[:layers])
-storage[:map]=Dict((0,0,2)=>0)
-for loc in storage[:grid]
-	storage[:map][loc]=0
-end
-
-g=makegrid(2)
-@assert length(g)==43
-function hex_to_pixel(q,r,size=storage[:size])
-    x = size * sqrt(3) * (q + r/2)
-    y = size * 3/2 * r
-    return x, y
-end
-function pixel_to_hex(x, y, size=storage[:size])
-    q = (x * sqrt(3)/3 - y / 3) / size
-    r = y * 2/3 / size
-    return (q, r)
-end
-
-function triangle(ctx,x,y,size,up=-1)
-	polygon(ctx, [Point(x,y),Point(x+size,y),Point(x+size/2,y+up*size)])
-	fill(ctx)
-end
-function hexlines(ctx,x,y,size)
-	size*=2
-	move_to(ctx,x-size/4,y-size*sin(pi/3)/2)
-	rel_line_to(ctx,size/2,size*sin(pi/3))
-	move_to(ctx,x-size/2,y)
-	rel_line_to(ctx,size,0)
-	move_to(ctx,x+size/4,y-size*sin(pi/3)/2)
-	rel_line_to(ctx,-size/2,size*sin(pi/3))
-	stroke(ctx)
-end
-function drawboard(ctx,w,h)
-	size=storage[:size]
-	rectangle(ctx, 0, 0, w, h)
-	set_source_rgb(ctx, backgroundcolor...)
-	fill(ctx)
-	set_source_rgb(ctx, storage[:players][storage[:player]]...)
-	arc(ctx, size, size, 3size, 0, 2pi)
-	fill(ctx)
-	set_source_rgb(ctx, gridcolor...)
-	for loc in storage[:grid]
-		if loc[3]==2
-			x,y=hex_to_pixel(loc[1],loc[2],size)
-			hexlines(ctx,x+w/2,y+h/2,size)
-		end
-	end
-	for move in storage[:map]
-		if move[2]>0
-			set_source_rgb(ctx, storage[:players][move[2]]...)
-			offset=(0,0)
-			if move[1][3]==1
-				offset=(-cos(pi/6)*size,sin(pi/6)*size)
-			elseif move[1][3]==3
-				offset=(-cos(pi/6)*size,-sin(pi/6)*size)
-			end
-			loc=hex_to_pixel(move[1][1],move[1][2])
-			#println(loc)
-			arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
-			fill(ctx)
-			set_source_rgb(ctx,gridcolor...)
-			arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
-			stroke(ctx)
-		end
-	end
-end
-function resetmap()
-	for loc in storage[:grid]
-		storage[:map][loc]=0
-	end
-	#drawboard()
-	#reveal(c,true)
-end
-
 function adjacent(hex,spacing=1,layer=false)
 	connections=[(1,0,0),(-1,0,0),(0,1,0),(0,-1,0),(1,-1,0),(-1,1,0), (0,0,1),(1,0,1),(0,1,1),(0,0,-1),(1,0,-1),(1,-1,-1)]
 	if layer
@@ -167,7 +95,87 @@ function placewhite(spacing::Integer,ori=(0,0,2))
 		placewhite(spacing,ad)
 	end
 end
-placewhite(storage[:spacing]) #<---- so out of place
+
+function initgame(startlocs=[(0,0,2)])
+	storage[:grid]=makegrid(storage[:layers],startlocs)
+	storage[:map]=Dict((0,0,2)=>0)
+	for loc in storage[:grid]
+		storage[:map][loc]=0
+	end
+	placewhite(storage[:spacing]) 
+end
+initgame([(0,0,2),(10,10,2)])
+#g=makegrid(2)
+#@assert length(g)==43
+function hex_to_pixel(q,r,size=storage[:size])
+    x = size * sqrt(3) * (q + r/2)
+    y = size * 3/2 * r
+    return x, y
+end
+function pixel_to_hex(x, y, size=storage[:size])
+    q = (x * sqrt(3)/3 - y / 3) / size
+    r = y * 2/3 / size
+    return (q, r)
+end
+
+function triangle(ctx,x,y,size,up=-1)
+	polygon(ctx, [Point(x,y),Point(x+size,y),Point(x+size/2,y+up*size)])
+	fill(ctx)
+end
+function hexlines(ctx,x,y,size)
+	size*=2
+	move_to(ctx,x-size/4,y-size*sin(pi/3)/2)
+	rel_line_to(ctx,size/2,size*sin(pi/3))
+	move_to(ctx,x-size/2,y)
+	rel_line_to(ctx,size,0)
+	move_to(ctx,x+size/4,y-size*sin(pi/3)/2)
+	rel_line_to(ctx,-size/2,size*sin(pi/3))
+	stroke(ctx)
+end
+function drawboard(ctx,w,h)
+	size=storage[:size]
+	rectangle(ctx, 0, 0, w, h)
+	set_source_rgb(ctx, backgroundcolor...)
+	fill(ctx)
+	set_source_rgb(ctx, storage[:players][storage[:player]]...)
+	arc(ctx, size, size, 3size, 0, 2pi)
+	fill(ctx)
+	set_source_rgb(ctx, gridcolor...)
+	for loc in storage[:grid]
+		if loc[3]==2
+			x,y=hex_to_pixel(loc[1],loc[2],size)
+			hexlines(ctx,x+w/2+storage[:offsetx],y+h/2+storage[:offsety],size)
+		end
+	end
+	for move in storage[:map]
+		if move[2]>0
+			set_source_rgb(ctx, storage[:players][move[2]]...)
+			offset=(storage[:offsetx],storage[:offsety])
+			if move[1][3]==1
+				offset=(-cos(pi/6)*size+storage[:offsetx],sin(pi/6)*size+storage[:offsety])
+			elseif move[1][3]==3
+				offset=(-cos(pi/6)*size+storage[:offsetx],-sin(pi/6)*size+storage[:offsety])
+			end
+			loc=hex_to_pixel(move[1][1],move[1][2])
+			#println(loc)
+			arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
+			fill(ctx)
+			set_source_rgb(ctx,gridcolor...)
+			#arc(ctx, loc[1]+offset[1]+w/2, loc[2]+offset[2]+h/2, size/3, 0, 2pi)
+			#stroke(ctx)
+		end
+	end
+end
+function resetmap()
+	for loc in storage[:grid]
+		storage[:map][loc]=0
+	end
+	#drawboard()
+	#reveal(c,true)
+end
+
+
+
 function getgroup(hex)
 	player=storage[:map][hex]
 	white=length(storage[:players])
@@ -261,7 +269,7 @@ function surrounded(layer::Integer)
 		end
 	end
 end
-function influence(hex,radius=3,layer=true,passover=false,passoverself=false,inclusive=true)
+function influence(hex,radius=3,layer=true,passover=false,passoverself=true,inclusive=true)
 	player=storage[:map][hex]
 	white=length(storage[:players])
 #	if player==0
@@ -296,7 +304,7 @@ function influence(hex,radius=3,layer=true,passover=false,passoverself=false,inc
 	end
 	return group
 end
-function allinfluence(radius=3,layer=2)
+function allinfluence(radius=3,layer=2,bools=(true,false,true,true))
 	influencemap=Dict()
 	for (loc,player) in storage[:map]
 		if loc[3]==layer
@@ -306,7 +314,7 @@ function allinfluence(radius=3,layer=2)
 	for (loc,player) in storage[:map]
 		if player!=0
 			col=storage[:players][player]
-			infl=influence(loc,radius)
+			infl=influence(loc,radius,bools...)
 			for inf in infl
 				influencemap[inf[1]].+=inf[2].*col
 			end
@@ -323,20 +331,27 @@ function numcolors(rgb)
 	end
 	return nc
 end
-function harvest(radius=3)
-	influencemap=allinfluence(radius)
-	brgbt=[0.0,0,0,0,0]
+function harvest(radius=3,layer=2,bools=(true,false,true,true))
+	influencemap=allinfluence(radius,layer,bools)
+	brgbw=[0.0,0,0,0,0]
 	for (iloc,inf) in influencemap
-		if numcolors(inf)==1
-			brgbt[1]+=min(sum(inf),1)
+		ninf=numcolors(inf)
+		if ninf==3
+			brgbw[5]+=min(inf...)
+		end
+		if ninf==1
+			brgbw[1]+=min(sum(inf),1)
 		else
 			for c in 1:3
-				brgbt[c+1]+=min(inf[c],inf[c%3+1])
+				brgbw[c+1]+=min(inf[c],inf[c%3+1])
 			end
 		end
 	end
-	brgbt[5]=sum(brgbt)
-	return brgbt
+	#brgbt[5]=sum(brgbt)
+	for c in 2:4
+		brgbw[c]-=brgbw[5]
+	end
+	return brgbw
 end
 function score()
 	claims=Dict()
@@ -384,7 +399,7 @@ function score()
 	maxpoints=length(storage[:map])
 	return scores,maxpoints
 end
-function undo() #wont undo captures
+function undo() #wont undo captures?
 	hex=pop!(storage[:sequence])
 	storage[:map][hex[1]]=0
 	storage[:player]=storage[:player]-1
@@ -396,28 +411,24 @@ end
 function pass()
 	storage[:player]=storage[:player]%storage[:np]+1
 end
+function printscore()
+	harv=round.(harvest(),1,10)
+	println("Black: ",harv[1]," Red: ",harv[2]," Green: ",harv[3]," Blue: ",harv[4]," White: ",harv[5]," Total: ",sum(harv))
+end
+if storage[:printscore]
+	printscore()
+end
+
 @guarded draw(c) do widget
     ctx = getgc(c)
     h = height(c)
     w = width(c)
 	storage[:window]=(w,h)
-	storage[:size]=storage[:window][2]/(storage[:layers]*3.5)
+	storage[:size]=storage[:window][2]/(storage[:layers]*storage[:sizemod])
     
 	set_source_rgb(ctx,0,0,0)
 	size=storage[:size]
-#	x,y=hex_to_pixel(1,2,size)
-#	hexlines(ctx,x,y,size)
-#	x,y=hex_to_pixel(1,1,size)
-#	hexlines(ctx,x,y,30)
-#	for i in 1:9
-#		for j in 1:9
-#			x,y=hex_to_pixel(i,j,size)
-#			hexlines(ctx,x,y,size)
-#		end
-#	end
 	drawboard(ctx,w,h)
-	
-	
 end
 
 c.mouse.button1press = @guarded (widget, event) -> begin
@@ -426,7 +437,7 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 	h = height(c)
 	w = width(c)
 	size=storage[:size]
-	q,r=pixel_to_hex(event.x-w/2,event.y-h/2)
+	q,r=pixel_to_hex(event.x-w/2-storage[:offsetx],event.y-h/2-storage[:offsety])
 	maindiff=abs(round(q)-q)+abs(round(r)-r)
 	qup,rup=pixel_to_hex(event.x-w/2+size*cos(pi/6),event.y-h/2+sin(pi/6)*size)
 	updiff=abs(round(qup)-qup)+abs(round(rup)-rup)
@@ -459,15 +470,14 @@ c.mouse.button1press = @guarded (widget, event) -> begin
 					storage[:player]=storage[:player]%storage[:np]+1
 				end
 			end
+			if storage[:printscore]
+				printscore()
+			end
 		end
 	end
 #	println((event.x-w/2,event.y-h/2),',',["main","up","down"][best])
 	drawboard(ctx,w,h)
 	reveal(widget)
-	if storage[:printscore]
-		harv=round.(harvest(),3,10)
-		println("Black: ",harv[1]," Red: ",harv[2]," Green: ",harv[3]," Blue: ",harv[4]," Total: ",harv[5])
-	end
 end
 show(c)
 
