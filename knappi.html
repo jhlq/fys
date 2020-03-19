@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Knappi</title>
+	<meta charset="utf-8">
+</head>
+
+<body>
+	<h1>Knappi</h1>
+
+	<label for="tryckningar">Klistra in tryckningar:</label>
+	<textarea id="tryckningar" rows="5" cols="50">
+	</textarea>
+	<button onclick="parsetext()">Processera</button>
+	<div id="output"></div>
+</body>
+<script>
+	function parsetext(str){
+		str=str||document.getElementById("tryckningar").value;
+		let stra=str.split('\n');
+		let labels=new Map();
+		labels.set("coming: worst",0);
+		labels.set("coming: okay",1);
+		labels.set("coming: good",2);
+		labels.set("coming: best",3);
+		labels.set("going: worst",4);
+		labels.set("going: okay",5);
+		labels.set("going: good",6);
+		labels.set("going: best",7);
+		let freqs=[0,0,0,0,0,0,0,0];
+		for (let s of stra){
+			let lt=s.split(", ");
+			if (lt.length>1){
+				l=lt[1];
+				if (labels.has(l)){
+					freqs[labels.get(l)]+=1;
+				}
+			}
+		}
+		let o="Coming (worst to best): "+freqs[0]+", "+freqs[1]+", "+freqs[2]+", "+freqs[3]+"\n";
+		o+="Going (worst to best): "+freqs[4]+", "+freqs[5]+", "+freqs[6]+", "+freqs[7]+"\n";
+		document.getElementById("output").innerText=o;
+	};
+</script>
+</html>
